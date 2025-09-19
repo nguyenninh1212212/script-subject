@@ -1,0 +1,5 @@
+{
+  "watch": ["src", "routes", "models"],
+  "ignore": ["swagger-output.json", "node_modules", "logs"],
+  "ext": "js,json"
+}
