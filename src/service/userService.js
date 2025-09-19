@@ -47,11 +47,12 @@ class AuthService {
       roles: roleNames,
     });
 
-    return { token };
+    return token;
   }
 
   async getUsers() {
-    return await User.findAll();
+    const users = await User.findAll();
+    return users;
   }
 }
 

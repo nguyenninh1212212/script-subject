@@ -2,7 +2,7 @@
 function success(res, data, status = 200) {
   return res.json({
     status: status,
-    data: data,
+    data,
   });
 }
 

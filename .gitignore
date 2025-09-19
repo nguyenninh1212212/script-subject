@@ -3,3 +3,6 @@ dist/
 build/
 .env
 coverage/
+# swagger.js
+# swagger-output.json
+.DS_Store
