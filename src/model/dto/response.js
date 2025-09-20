@@ -12,4 +12,4 @@ function message(res, message, status = 200) {
     status,
   });
 }
-module.exports = { success, message };
+export { success, message };

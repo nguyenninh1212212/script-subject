@@ -1,15 +1,13 @@
-const Sequelize = require("sequelize");
-const sequelize = require("../../config/db.config");
+import Sequelize from "sequelize";
+import sequelize from "../../config/db.config.js";
 
-const UserModel = require("./user")(sequelize, Sequelize.DataTypes);
-const RoleModel = require("./role")(sequelize, Sequelize.DataTypes);
+import UserFactory from "./user.js";
+import RoleFactory from "./role.js";
 
-// Many-to-Many
+const UserModel = UserFactory(sequelize, Sequelize.DataTypes);
+const RoleModel = RoleFactory(sequelize, Sequelize.DataTypes);
+
 UserModel.belongsToMany(RoleModel, { through: "UserRole", as: "roles" });
 RoleModel.belongsToMany(UserModel, { through: "UserRole", as: "users" });
 
-module.exports = {
-  sequelize,
-  User: UserModel,
-  Role: RoleModel,
-};
+export { sequelize, UserModel as User, RoleModel as Role };

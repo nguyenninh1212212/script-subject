@@ -1,12 +1,12 @@
-const jwt = require("jsonwebtoken");
-require("dotenv").config();
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import { AES } from "../util/AES.js";
 
-const { AES } = require("../util/AES");
+dotenv.config();
 
-const generateToken = (payload) => {
-  return jwt.sign({ data: AES(payload) }, process.env.JWT_SECRET, {
+export function generateToken(payload) {
+  const { roles, ...rest } = payload;
+  return jwt.sign({ roles, data: AES(rest) }, process.env.JWT_SECRET, {
     expiresIn: "1h",
   });
-};
-
-module.exports = { generateToken };
+}

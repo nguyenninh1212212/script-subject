@@ -1,36 +1,45 @@
-  var createError = require("http-errors");
-  var express = require("express");
-  var path = require("path");
-  var cookieParser = require("cookie-parser");
-  var logger = require("morgan");
+import express from "express";
+import path from "path";
+import cookieParser from "cookie-parser";
+import logger from "morgan";
+import dotenv from "dotenv";
+import fs from "fs";
+import indexRouter from "./src/routes/index.js";
+import swaggerUi from "swagger-ui-express";
+import { outputFile } from "./swagger.js";
+import errorHandler from "./src/middleware/errorHandler.js";
+import seedRoles from "./src/config/seedRoles.js";
 
-  var indexRouter = require("./src/routes/index");
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
-  const swaggerUi = require("swagger-ui-express");
-  const { outputFile } = require("./swagger");
-  const swaggerDocument = require(outputFile);
-  const errorHandler = require("./src/middleware/errorHandler");
-  const seedRoles = require("./src/config/seedRoles");
+const swaggerPath = path.resolve("./swagger-output.json");
+const swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
 
-  var app = express();
-  require("dotenv").config();
-  // view engine setup
-  app.set("views", path.join(__dirname, "views"));
-  app.set("view engine", "jade");
+// Để dùng __dirname trong ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-  app.use(logger("dev"));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
-  app.use(cookieParser());
-  app.use(express.static(path.join(__dirname, "public")));
+dotenv.config();
 
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-  app.use("/", indexRouter);
+const app = express();
 
-  app.use(errorHandler);
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "jade");
 
-  seedRoles()
-    .then(() => console.log("Roles seeded"))
-    .catch((err) => console.error("Error seeding roles:", err));
+app.use(logger("dev"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, "public")));
 
-  module.exports = app;
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use("/", indexRouter);
+
+app.use(errorHandler);
+
+seedRoles()
+  .then(() => console.log("Roles seeded"))
+  .catch((err) => console.error("Error seeding roles:", err));
+
+export default app;

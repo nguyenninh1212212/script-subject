@@ -1,6 +1,7 @@
 {
   "name": "pr2",
   "version": "0.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
@@ -10,7 +11,7 @@
     "bcryptjs": "^3.0.2",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
-    "dotenv": "^17.2.2",
+    "dotenv": "^17.2.2", 
     "express": "~4.16.1",
     "http-errors": "~1.6.3",
     "jade": "~1.11.0",
@@ -23,7 +24,6 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },
-  "type": "commonjs",
   "devDependencies": {
     "nodemon": "^3.1.10"
   }

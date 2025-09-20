@@ -1,4 +1,4 @@
-module.exports= (sequelize, DataTypes) => {
+export default (sequelize, DataTypes) => {
   const Role = sequelize.define(
     "Role",
     {
@@ -19,5 +19,6 @@ module.exports= (sequelize, DataTypes) => {
       timestamps: true,
     }
   );
+
   return Role;
 };

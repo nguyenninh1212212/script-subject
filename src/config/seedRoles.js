@@ -1,7 +1,7 @@
-// src/seed/roleSeed.js
-const Sequelize = require("sequelize");
-const sequelize = require("./db.config");
-const Role = require("../model/entity/role")(sequelize, Sequelize.DataTypes);
+import { Sequelize } from "sequelize";
+import sequelize from "./db.config.js";
+import createRole from "../model/entity/role.js"; // import ESM
+const Role = createRole(sequelize, Sequelize.DataTypes);
 
 async function seedRoles() {
   const defaultRoles = [{ name: "admin" }, { name: "user" }, { name: "guest" }];
@@ -12,4 +12,4 @@ async function seedRoles() {
   console.log("✅ Default roles seeded");
 }
 
-module.exports = seedRoles;
+export default seedRoles;

@@ -1,11 +1,12 @@
-const sequelize = require("../config/db.config");
-const { User, Role } = require("../model/entity");
-const generateToken = require("../util/jwt").generateToken;
-const bcrypt = require("bcryptjs");
-const createError = require("http-errors");
+import sequelize from "../config/db.config.js";
+import { User, Role } from "../model/entity/index.js";
+import { generateToken } from "../util/jwt.js";
+import bcrypt from "bcryptjs";
+import createError from "http-errors";
 
-class AuthService {
+class UserService {
   constructor() {
+    // Sync DB khi app start
     sequelize
       .sync({ alter: true })
       .then(() => console.log("✅ Database synced"))
@@ -51,9 +52,8 @@ class AuthService {
   }
 
   async getUsers() {
-    const users = await User.findAll();
-    return users;
+    return await User.findAll();
   }
 }
 
-module.exports = new AuthService();
+export default new UserService();

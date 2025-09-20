@@ -1,5 +1,5 @@
-const createError = require("http-errors");
-const { message } = require("../model/dto/response");
+import createError from "http-errors";
+import { message } from "../model/dto/response.js";
 
 const errorHandler = (err, req, res, next) => {
   if (!err) {
@@ -17,4 +17,4 @@ const errorHandler = (err, req, res, next) => {
   message(res, msg, statusCode);
 };
 
-module.exports = errorHandler;
+export default errorHandler;

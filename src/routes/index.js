@@ -1,7 +1,7 @@
-// routes/index.js
-const express = require("express");
+import express from "express";
+import userRoutes from "./users.js";
+
 const router = express.Router();
-const asyncHandler = require("../middleware/asyncHandler");
 
 class HomeController {
   index(req, res, next) {
@@ -13,6 +13,6 @@ const homeController = new HomeController();
 
 router.get("/", (req, res, next) => homeController.index(req, res, next));
 
-router.use("/user", require("./users"));
+router.use("/user", userRoutes);
 
-module.exports = router;
+export default router;

@@ -1,6 +1,10 @@
-// swagger.js
-const swaggerAutogen = require("swagger-autogen")();
-require("dotenv").config();
+import swaggerAutogen from "swagger-autogen";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const swagger = swaggerAutogen(); // tạo instance
+
 const doc = {
   info: {
     title: "API Documentation",
@@ -22,11 +26,10 @@ const doc = {
   ],
 };
 
-const outputFile = "./swagger-output.json";
+export const outputFile = "./swagger-output.json";
 const endpointsFiles = ["./src/routes/index.js"];
 
-swaggerAutogen(outputFile, endpointsFiles, doc).then(() => {
+// Tạo file swagger JSON
+swagger(outputFile, endpointsFiles, doc).then(() => {
   console.log("Swagger JSON generated!");
 });
-
-module.exports = { outputFile };
