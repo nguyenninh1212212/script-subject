@@ -4,7 +4,6 @@ import createError from "http-errors";
 import { AESDecrypt } from "../util/AES.js";
 
 dotenv.config();
-
 export const authenticateToken = (req, res, next) => {
   const header = req.headers["authorization"];
   const token = header && header.split(" ")[1];
