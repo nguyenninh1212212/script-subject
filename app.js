@@ -9,6 +9,7 @@ import swaggerUi from "swagger-ui-express";
 import { outputFile } from "./swagger.js";
 import errorHandler from "./src/middleware/errorHandler.js";
 import seedRoles from "./src/config/seedRoles.js";
+import { notFound } from "./src/middleware/errorHandler.js";
 
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -37,6 +38,10 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/", indexRouter);
 
 app.use(errorHandler);
+
+app.use((req, res, next) => {
+  next(notFound());
+});
 
 seedRoles()
   .then(() => console.log("Roles seeded"))

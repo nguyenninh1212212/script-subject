@@ -3,10 +3,10 @@ import { User, Role } from "../model/entity/index.js";
 import { generateToken } from "../util/jwt.js";
 import bcrypt from "bcryptjs";
 import createError from "http-errors";
+import { alreadyExist, unauthorized } from "../middleware/errorHandler.js";
 
 class UserService {
   constructor() {
-    // Sync DB khi app start
     sequelize
       .sync({ alter: true })
       .then(() => console.log("✅ Database synced"))
@@ -20,7 +20,7 @@ class UserService {
     });
 
     if (!created) {
-      throw createError(409, "User already exists");
+      throw alreadyExist("Username");
     }
 
     const role = await Role.findOne({ where: { name: "user" } });
@@ -32,12 +32,12 @@ class UserService {
   async login({ username, password }) {
     const user = await User.findOne({ where: { username } });
     if (!user) {
-      throw createError(401, "Invalid credentials");
+      throw unauthorized("Invalid credentials");
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      throw createError(401, "Invalid password");
+      throw unauthorized("Invalid password");
     }
 
     const roles = await user.getRoles();
