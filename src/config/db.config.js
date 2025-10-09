@@ -17,12 +17,20 @@ const sequelize = new Sequelize(
 async function connectDB() {
   try {
     await sequelize.authenticate();
-    console.log("✅ Connected to PostgreSQL with Sequelize");
   } catch (error) {
-    console.error("❌ Unable to connect to DB:", error);
+    return;
+  }
+}
+
+async function syncDB() {
+  try {
+    await sequelize.sync({ force: false, alter: true, logging: false });
+  } catch (err) {
+    return;
   }
 }
 
 connectDB();
+syncDB();
 
 export default sequelize;

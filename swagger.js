@@ -1,17 +1,26 @@
+// src/swagger/swagger.js
 import swaggerAutogen from "swagger-autogen";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const swagger = swaggerAutogen(); // tạo instance
+const swagger = swaggerAutogen({ openapi: "3.0.0" }); // auto-gen dùng chuẩn OpenAPI 3.0
 
 const doc = {
   info: {
-    title: "API Documentation",
-    description: "Swagger cho Node.js Express",
+    title: "Music API 🎵",
+    description: "API quản lý bài hát, playlist và nghệ sĩ.",
+    version: "1.0.0",
   },
-  host: `${process.env.DB_HOST}:${process.env.PORT}`,
+  host: `localhost:${process.env.PORT || 3000}`,
   schemes: ["http"],
+  tags: [
+    { name: "User", description: "Đăng ký, đăng nhập, thông tin người dùng" },
+    { name: "Artist", description: "Quản lý nghệ sĩ" },
+    { name: "Song", description: "Quản lý bài hát" },
+    { name: "Playlist", description: "Quản lý playlist" },
+    { name: "Payment", description: "Thanh toán và gói dịch vụ" },
+  ],
   securityDefinitions: {
     bearerAuth: {
       type: "apiKey",
@@ -19,17 +28,12 @@ const doc = {
       in: "header",
     },
   },
-  security: [
-    {
-      bearerAuth: [],
-    },
-  ],
+  security: [{ bearerAuth: [] }],
 };
 
 export const outputFile = "./swagger-output.json";
-const endpointsFiles = ["./src/routes/index.js"];
+export const endpointsFiles = ["./src/routes/index.js"];
 
-// Tạo file swagger JSON
 swagger(outputFile, endpointsFiles, doc).then(() => {
-  console.log("Swagger JSON generated!");
+  console.log("✅ Swagger JSON generated!");
 });

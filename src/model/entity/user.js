@@ -10,25 +10,19 @@ export default (sequelize, DataTypes) => {
         primaryKey: true,
         allowNull: false,
       },
-      username: { type: DataTypes.STRING, allowNull: false, unique: true },
-      email: { type: DataTypes.STRING, allowNull: false, unique: true },
-      password: { type: DataTypes.STRING, allowNull: false },
+      username: { type: DataTypes.STRING, allowNull: true, unique: true },
+      email: { type: DataTypes.STRING, allowNull: true, unique: true },
+      password: { type: DataTypes.STRING, allowNull: true },
+      refreshToken: { type: DataTypes.TEXT, allowNull: true },
+      googleId: { type: DataTypes.STRING, unique: true, allowNull: true },
+      provider: {
+        type: DataTypes.ENUM("LOCAL", "GOOGLE"),
+        defaultValue: "LOCAL",
+      },
     },
     {
       tableName: "users",
       timestamps: true,
-      hooks: {
-        beforeCreate: async (user) => {
-          if (user.password) {
-            user.password = await bcrypt.hash(user.password, 10);
-          }
-        },
-        beforeUpdate: async (user) => {
-          if (user.changed("password")) {
-            user.password = await bcrypt.hash(user.password, 10);
-          }
-        },
-      },
     }
   );
 

@@ -6,13 +6,12 @@ import dotenv from "dotenv";
 import fs from "fs";
 import indexRouter from "./src/routes/index.js";
 import swaggerUi from "swagger-ui-express";
-import { outputFile } from "./swagger.js";
 import errorHandler from "./src/middleware/errorHandler.js";
-import seedRoles from "./src/config/seedRoles.js";
-import { notFound } from "./src/middleware/errorHandler.js";
+import { initDB } from "./src/config/init/initdb.js";
 
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+dotenv.config();
 
 const swaggerPath = path.resolve("./swagger-output.json");
 const swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
@@ -21,9 +20,8 @@ const swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config();
-
 const app = express();
+app.use(express.static("public"));
 
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
@@ -38,13 +36,6 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/", indexRouter);
 
 app.use(errorHandler);
-
-app.use((req, res, next) => {
-  next(notFound());
-});
-
-seedRoles()
-  .then(() => console.log("Roles seeded"))
-  .catch((err) => console.error("Error seeding roles:", err));
+await initDB();
 
 export default app;

@@ -6,3 +6,4 @@ coverage/
 # swagger.js
 # swagger-output.json
 .DS_Store
+test/

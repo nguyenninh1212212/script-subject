@@ -16,6 +16,7 @@ export default (sequelize, DataTypes) => {
     },
     {
       tableName: "roles",
+      freezeTableName: true,
       timestamps: true,
     }
   );
