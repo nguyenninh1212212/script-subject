@@ -1,7 +1,7 @@
 // routes/paypal.js
 import express from "express";
 import paypal from "@paypal/checkout-server-sdk";
-import client from "../../config/paypal.js";
+import client from "../../config/payment_wallet/paypal.config.js";
 import paymentService from "../../service/paymentService.js";
 import { notFound } from "../../middleware/errorHandler.js";
 import asyncHandler from "../../middleware/asyncHandler.js";

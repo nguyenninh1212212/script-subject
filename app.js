@@ -35,7 +35,8 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/", indexRouter);
 
-app.use(errorHandler);
 await initDB();
+
+app.use(errorHandler);
 
 export default app;

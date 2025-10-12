@@ -8,7 +8,8 @@ export default (sequelize, DataTypes) => {
         primaryKey: true,
       },
       title: { type: DataTypes.STRING, allowNull: false },
-      fileUrl: { type: DataTypes.STRING, allowNull: false }, // link nhạc
+      song: { type: DataTypes.STRING, allowNull: false }, // link nhạc
+      artistId: { type: DataTypes.STRING, allowNull: false },
       coverImage: { type: DataTypes.STRING }, // ảnh bìa
       duration: { type: DataTypes.INTEGER }, // thời lượng (giây)
       isVipOnly: { type: DataTypes.BOOLEAN, defaultValue: false },

@@ -1,9 +1,9 @@
 import { Subscription, SubscriptionPlan } from "../model/entity/index.js";
 import { notFound, badRequest } from "../middleware/errorHandler.js";
-import subscriptionType from "../enum/subscriptionType.js";
-import { where } from "sequelize";
+import sequelize from "../config/db.config.js";
 
 const createSubscription = async ({ userId, planId }) => {
+  const t = await sequelize.transaction();
   const plan = await SubscriptionPlan.findByPk(planId);
   if (!plan) {
     notFound("Subscription plan not found");
@@ -15,6 +15,7 @@ const createSubscription = async ({ userId, planId }) => {
       as: "plan",
       where: { type: plan.type },
     },
+    transaction: t,
   });
 
   if (existing) {

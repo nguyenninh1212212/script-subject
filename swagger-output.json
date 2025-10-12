@@ -349,7 +349,45 @@
         "tags": [
           "Song"
         ],
-        "description": "",
+        "summary": "Upload a new song with its cover image.",
+        "description": "Endpoint to upload a song file and a cover image, along with song metadata.",
+        "parameters": [
+          {
+            "name": "songFile",
+            "in": "formData",
+            "required": true,
+            "description": "The audio file of the song.",
+            "schema": {
+              "type": "file"
+            }
+          },
+          {
+            "name": "coverFile",
+            "in": "formData",
+            "required": true,
+            "description": "The cover image for the song.",
+            "schema": {
+              "type": "file"
+            }
+          },
+          {
+            "name": "title",
+            "in": "formData",
+            "required": true,
+            "description": "Title of the song.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "albumId",
+            "in": "formData",
+            "description": "ID of the album this song belongs to (optional).",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "default": {
             "description": ""
@@ -368,12 +406,6 @@
                     "example": "any"
                   },
                   "duration": {
-                    "example": "any"
-                  },
-                  "url": {
-                    "example": "any"
-                  },
-                  "artistId": {
                     "example": "any"
                   }
                 }

@@ -29,7 +29,6 @@ router.get(
   })
 );
 
-// [POST] /ads -> admin tạo quảng cáo
 router.post(
   "/",
   authenticateToken(true),

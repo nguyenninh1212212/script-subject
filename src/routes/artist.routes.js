@@ -12,7 +12,7 @@ router.post(
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Artist']
-    const userId = req.user.id;
+    const userId = req.user.sub;
     const { stageName, bio, avatarUrl } = req.body;
     const artist = await artistService.createArtist({
       userId,

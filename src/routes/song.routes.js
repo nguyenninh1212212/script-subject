@@ -2,6 +2,7 @@ import express from "express";
 import songService from "../service/songService.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import { success } from "../model/dto/response.js";
+import upload from "../middleware/multer.js";
 import {
   authenticateToken,
   authorizeRoles,
@@ -11,19 +12,72 @@ const router = express.Router();
 
 router.post(
   "/",
+  upload.fields([
+    { name: "songFile", maxCount: 1 },
+    { name: "coverFile", maxCount: 1 },
+  ]),
   authenticateToken(true),
   asyncHandler(async (req, res) => {
-    // #swagger.tags = ['Song']
-    const { title, albumId, duration, url, artistId } = req.body; // fix req.bod -> req.body
+    // #region Swagger
+    /* #swagger.tags = ['Song']
+    #swagger.summary = 'Upload a new song with its cover image.'
+    #swagger.description = 'Endpoint to upload a song file and a cover image, along with song metadata.'
+    
+    #swagger.consumes = ['multipart/form-data']
+
+    // --- Định nghĩa các trường FILE ---
+    #swagger.parameters['songFile'] = {
+        in: 'formData',
+        type: 'file',
+        required: 'true',
+        description: 'The audio file of the song.'
+    }
+    #swagger.parameters['coverFile'] = {
+        in: 'formData',
+        type: 'file',
+        required: 'true',
+        description: 'The cover image for the song.'
+    }
+
+    // --- BỔ SUNG: Định nghĩa các trường TEXT ---
+    #swagger.parameters['title'] = {
+        in: 'formData',
+        type: 'string',
+        required: 'true',
+        description: 'Title of the song.'
+    }
+    #swagger.parameters['albumId'] = {
+        in: 'formData',
+        type: 'integer',
+        description: 'ID of the album this song belongs to (optional).'
+    }
+    #swagger.parameters['duration'] = {
+        in: 'formData',
+        type: 'string',
+        required: 'true',
+        description: 'Duration of the song (e.g., "3:45").'
+    }
+*/
+    // #endregion
+    const { title, duration } = req.body;
+
+    const files = req.files;
+    if (!files || !files.songFile || !files.coverFile) {
+      // Giả sử bạn có hàm badRequest để throw lỗi 400
+      badRequest("Both songFile and coverFile are required.");
+    }
+
+    const songFile = files.songFile[0];
+    const coverFile = files.coverFile[0];
+
     const userId = req.user.sub;
 
     const song = await songService.createSong({
       title,
-      albumId,
       userId,
-      artistId,
+      songFile,
+      coverFile,
       duration,
-      url,
     });
 
     success(res, song, 201);

@@ -2,7 +2,7 @@
 import express from "express";
 import asyncHandler from "../middleware/asyncHandler.js";
 import paypal from "@paypal/checkout-server-sdk";
-import client from "../config/paypal.js";
+import client from "../config/payment_wallet/paypal.config.js";
 import { SubscriptionPlan } from "../model/entity/index.js";
 import { notFound } from "../middleware/errorHandler.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";

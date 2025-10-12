@@ -14,23 +14,4 @@ const sequelize = new Sequelize(
   }
 );
 
-async function connectDB() {
-  try {
-    await sequelize.authenticate();
-  } catch (error) {
-    return;
-  }
-}
-
-async function syncDB() {
-  try {
-    await sequelize.sync({ force: false, alter: true, logging: false });
-  } catch (err) {
-    return;
-  }
-}
-
-connectDB();
-syncDB();
-
 export default sequelize;

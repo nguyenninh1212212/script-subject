@@ -36,8 +36,7 @@ router.get(
   authorizeRoles("admin"),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
-
-    const users = await userService.getUsers(); // dùng userService
+    const users = await userService.getUsers();
     success(res, users);
   })
 );
@@ -58,7 +57,6 @@ router.post(
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
-
     await userService.logout(req.user.sub);
     message(res, "Logged out successfully");
   })
@@ -69,9 +67,7 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { credential } = req.body;
-
     const result = await userService.googleLogin({ credential });
-
     success(res, result);
   })
 );

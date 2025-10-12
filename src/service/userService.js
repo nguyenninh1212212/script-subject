@@ -23,12 +23,14 @@ async function register({ username, email, password }) {
     badRequest("Invalid input");
   }
 
+  const hashPassword = await bcrypt.hash(password, 10);
+
   const [user, created] = await User.findOrCreate({
     where: { [Op.or]: [{ username }, { email }] },
     defaults: {
       username,
       email,
-      password: await bcrypt.hash(password, 10),
+      password: hashPassword,
     },
   });
 

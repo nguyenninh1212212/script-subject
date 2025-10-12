@@ -2,7 +2,7 @@ import { User, Role, SubscriptionPlan } from "../../model/entity/index.js";
 import subscriptionType from "../../enum/subscriptionType.js";
 import subscriptionService from "../../service/subscriptionService.js";
 import artistService from "../../service/artistService.js";
-
+import bcrypt from "bcryptjs";
 import { Op, where } from "sequelize";
 const plans = [
   {
@@ -63,10 +63,14 @@ const defaultTestdata = async () => {
       const { username, email, password, nameRole } = account;
       const [user, created] = await User.findOrCreate({
         where: { [Op.or]: [{ username }, { email }] },
-        defaults: { username, email, password },
+        defaults: {
+          username,
+          email,
+          password: await bcrypt.hash(password, 10),
+        },
       });
 
-      if (created) continue;
+      if (!created) continue;
 
       const role = await Role.findOne({ where: { name: nameRole } });
       if (role) await user.addRole(role);

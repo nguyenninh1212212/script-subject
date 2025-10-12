@@ -1,6 +1,13 @@
 import { where } from "sequelize";
-import { Artist, Album, Song, Subscription } from "../model/entity/index.js";
-import { alreadyExist } from "../middleware/errorHandler.js";
+import {
+  Artist,
+  Album,
+  Song,
+  Subscription,
+  SubscriptionPlan,
+} from "../model/entity/index.js";
+import subscriptionType from "../enum/subscriptionType.js";
+import { alreadyExist, badRequest } from "../middleware/errorHandler.js";
 
 async function createArtist({
   userId,
@@ -8,9 +15,29 @@ async function createArtist({
   bio = "",
   avatarUrl = "",
 }) {
-  const exist = Artist.findOne({
+  const existArtPlan = await Subscription.count({
+    include: [
+      {
+        model: SubscriptionPlan,
+        as: "plan",
+        required: true,
+        where: {
+          type: subscriptionType.ARTIST,
+        },
+
+        attributes: [],
+      },
+    ],
+    where: {
+      userId: userId,
+    },
+  });
+
+  if (existArtPlan == 0) badRequest("You need to subscripe artist plan");
+  const exist = await Artist.findOne({
     where: { userId },
   });
+  console.log("🚀 ~ createArtist ~ exist:", exist);
 
   if (exist) {
     alreadyExist("Artist");
