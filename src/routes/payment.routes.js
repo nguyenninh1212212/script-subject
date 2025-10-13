@@ -16,9 +16,7 @@ router.post(
     const { planId } = req.body;
     const userId = req.user.sub;
     const ip = req.ip;
-    console.log("🚀 ~ ip:", ip);
     const geo = geoip.lookup(ip);
-    console.log("🚀 ~ geo:", geo);
     const approveUrl = await paymentService.createOrderPaypal(
       {
         planId,

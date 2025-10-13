@@ -302,6 +302,29 @@
         }
       }
     },
+    "/api/artists/{id}": {
+      "get": {
+        "tags": [
+          "Artist"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/albums/": {
       "post": {
         "tags": [
@@ -478,6 +501,43 @@
         "responses": {
           "default": {
             "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Song"
+        ],
+        "summary": "Cập nhật bài hát",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "requestBody": {
+          "description": "Dữ liệu bất kỳ để cập nhật bài hát.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "object"
+              }
+            }
           }
         }
       }

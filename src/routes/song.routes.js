@@ -88,7 +88,7 @@ router.get(
 
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
-    const { page, size } = req.query;
+    const { page = 1, size = 10 } = req.query;
     const songs = await songService.getSongs({ page, size });
     success(res, songs);
   })
@@ -137,6 +137,39 @@ router.delete(
     const { id } = req.params;
     await songService.deleteSong(id);
     success(res, null, 204);
+  })
+);
+router.patch(
+  "/:id",
+  upload.single("coverFile"),
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.start
+    /* // Sẽ cập nhật Swagger ở bước 3
+     */
+    // #swagger.end
+
+    const userId = req.user.sub;
+    const { id } = req.params;
+    const dataToUpdate = { ...req.body }; // Dữ liệu text từ form
+    const coverFile = req.file; // Lấy file đã upload (nếu có)
+
+    // Lọc các trường không cho phép cập nhật
+    delete dataToUpdate.id;
+    delete dataToUpdate.artistId;
+
+    if (Object.keys(dataToUpdate).length === 0 && !coverFile) {
+      return badRequest(res, "No data or file provided for update.");
+    }
+
+    await songService.updateSong({
+      id,
+      userId,
+      data: dataToUpdate,
+      coverFile: coverFile,
+    });
+
+    message(res, "Update success", 200);
   })
 );
 

@@ -1,13 +1,13 @@
-import { where } from "sequelize";
 import {
   Artist,
   Album,
-  Song,
   Subscription,
   SubscriptionPlan,
+  Song,
 } from "../model/entity/index.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import { alreadyExist, badRequest } from "../middleware/errorHandler.js";
+import { getPagination, getPagingData } from "../util/pagination.js";
 
 async function createArtist({
   userId,
@@ -45,12 +45,15 @@ async function createArtist({
   return await Artist.create({ userId, stageName, bio, avatarUrl });
 }
 
-async function getArtists() {
-  return await Artist.findAll({ include: ["albums", "songs"] });
-}
+async function getArtists({ page = 1, size = 10 }) {
+  const { limit, offset } = getPagination(page, size);
 
-async function getArtistById(id) {
-  return await Artist.findByPk(id, { include: ["albums", "songs"] });
+  const data = await Artist.findAndCountAll({
+    attributes: ["id", "stageName", "avatarUrl", "verified"],
+    limit,
+    offset,
+  });
+  return getPagingData(data, page, limit);
 }
 
 async function getArtistByUserId(userId) {
@@ -59,4 +62,27 @@ async function getArtistByUserId(userId) {
   });
 }
 
-export default { createArtist, getArtists, getArtistById, getArtistByUserId };
+async function getArtist({ id }) {
+  return await Artist.findByPk(id, {
+    include: [
+      {
+        model: Album,
+        as: "album",
+        attributes: ["id", "title", "coverUrl"],
+      },
+      {
+        model: Song,
+        as: "song",
+        attributes: ["id", "coverImage", "isVipOnly", "title"],
+      },
+    ],
+    attributes: ["id", "stageName", "bio", "avatarUrl", "verified"],
+  });
+}
+
+export default {
+  createArtist,
+  getArtists,
+  getArtistByUserId,
+  getArtist,
+};

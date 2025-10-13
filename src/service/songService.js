@@ -3,7 +3,7 @@ import { notFound, badRequest } from "../middleware/errorHandler.js";
 import subscriptionService from "../service/subscriptionService.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import adsService from "./adsService.js";
-import { uploadFromBuffer } from "../util/cloudinary.js";
+import { uploadFromBuffer, deleteFromCloudinary } from "../util/cloudinary.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { Op } from "sequelize";
 
@@ -45,37 +45,42 @@ export const getSongs = async ({ page, size }) => {
   });
   return getPagingData(data, page, limit);
 };
+
 export const getSong = async ({ userId, id }) => {
-  const song = await Song.findByPk(
-    { id },
-    {
-      include: [
-        {
-          model: Album,
-          as: "album",
-          attributes: ["id", "title", "coverUrl"],
-        },
-        {
-          model: Artist,
-          as: "artist",
-          attributes: ["id", "stageName", "avatarUrl"],
-        },
-      ],
-    }
-  );
-  const isSubscription = subscriptionService.checkSubscription({
+  const song = await Song.findByPk(id.id, {
+    include: [
+      {
+        model: Album,
+        as: "album",
+        attributes: ["id", "title", "coverUrl"],
+      },
+      {
+        model: Artist,
+        as: "artist",
+        attributes: ["id", "stageName", "avatarUrl"],
+      },
+    ],
+  });
+  if (!song) {
+    return null;
+  }
+
+  const isSubscription = await subscriptionService.checkSubscription({
     userId,
     type: subscriptionType.USER,
   });
-  if (!isSubscription) {
-    const ads = adsService.getRandomAd();
-    if (ads && ads.type == "AUDIO") {
-      return { song, ads };
-    }
-    return;
+
+  if (isSubscription) {
+    return { song: song, ads: null };
   }
 
-  return song;
+  const ads = await adsService.getRandomAd();
+
+  if (ads && ads.type === "AUDIO") {
+    return { song, ads };
+  }
+
+  return { song, ads: null };
 };
 
 async function removeSong({ userId, songId }) {
@@ -127,6 +132,29 @@ async function restoreSong({ userId, id }) {
   }
 }
 
+async function updateSong({ id, userId, data, coverFile }) {
+  const song = await Song.findByPk(id);
+  if (!song) {
+    notFound("Song not found");
+  }
+  const artist = await Artist.findOne({ where: { userId } });
+  if (!artist || song.artistId !== artist.id) {
+    unauthorized("You do not have permission to update this song.");
+  }
+
+  if (coverFile) {
+    const oldCover = song.coverImage;
+    const newCover = await uploadFromBuffer(coverFile.buffer, "coverImages");
+    data.coverUrl = newCover;
+    if (oldCover) {
+      await deleteFromCloudinary(oldCover);
+    }
+  }
+  await song.update(data);
+
+  return song;
+}
+
 export default {
   createSong,
   getSongs,
@@ -134,4 +162,5 @@ export default {
   deleteSong,
   getSong,
   restoreSong,
+  updateSong,
 };

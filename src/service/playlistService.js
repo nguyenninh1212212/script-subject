@@ -1,6 +1,5 @@
 import { Playlist, Song, User } from "../model/entity/index.js";
 import { notFound, badRequest } from "../middleware/errorHandler.js";
-import user from "../model/entity/user.js";
 
 async function createPlaylist({ name, userId }) {
   return await Playlist.create({ name, userId });
@@ -19,7 +18,6 @@ async function addSongToPlaylist(playlistId, songId) {
 async function getPlaylistsByUser(userId) {
   return await Playlist.findAll({
     where: { userId },
-    include: [Song],
   });
 }
 
@@ -28,7 +26,9 @@ async function getPlaylistById(id) {
 }
 
 async function removeSongFromPlaylist(playlistId, songId) {
-  const playlist = await Playlist.findByPk(playlistId);
+  const playlist = await Playlist.findByPk(playlistId, {
+    include: { model: Song, as: "song" },
+  });
   const song = await Song.findByPk(songId);
   await playlist.removeSong(song);
   return playlist;
