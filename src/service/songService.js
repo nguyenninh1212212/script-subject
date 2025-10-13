@@ -4,14 +4,10 @@ import subscriptionService from "../service/subscriptionService.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import adsService from "./adsService.js";
 import { uploadFromBuffer } from "../util/cloudinary.js";
+import { getPagination, getPagingData } from "../util/pagination.js";
+import { Op } from "sequelize";
 
-async function createSong({
-  title,
-  userId,
-  songFile,
-  coverFile,
-  duration,
-}) {
+async function createSong({ title, userId, songFile, coverFile, duration }) {
   const artistId = await Artist.findOne({
     where: { userId },
     arttibutes: ["id"],
@@ -32,8 +28,10 @@ async function createSong({
   });
 }
 
-export const getSongs = async () => {
-  return await Song.findAll({
+export const getSongs = async ({ page, size }) => {
+  const { limit, offset } = getPagination(page, size);
+
+  const data = await Song.findAndCountAll({
     attributes: ["id", "title", "isVipOnly", "coverImage"],
     include: [
       {
@@ -42,7 +40,10 @@ export const getSongs = async () => {
         attributes: ["id", "stageName", "avatarUrl"],
       },
     ],
+    limit,
+    offset,
   });
+  return getPagingData(data, page, limit);
 };
 export const getSong = async ({ userId, id }) => {
   const song = await Song.findByPk(
@@ -93,8 +94,44 @@ async function removeSong({ userId, songId }) {
 async function deleteSong(songId) {
   await Song.destroy({
     where: { id: songId },
-    force: true,
   });
 }
+async function restoreSong({ userId, id }) {
+  const artist = await Artist.findOne({
+    where: { userId: userId },
+    attributes: ["id"],
+  });
+  if (!artist) {
+    notFound("Artist");
+  }
+  const [numberOfAffectedRows] = await Song.update(
+    { deletedAt: null },
+    {
+      where: {
+        id: id,
+        deletedAt: { [Op.not]: null },
+      },
+      include: {
+        model: Artist,
+        as: "artist",
+        where: { artistId: artist.id },
+      },
+      paranoid: false,
+    }
+  );
 
-export default { createSong, getSongs, removeSong, deleteSong, getSong };
+  if (numberOfAffectedRows > 0) {
+    console.log("Đã khôi phục bài hát thành công!");
+  } else {
+    notFound("Song");
+  }
+}
+
+export default {
+  createSong,
+  getSongs,
+  removeSong,
+  deleteSong,
+  getSong,
+  restoreSong,
+};

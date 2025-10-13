@@ -1,7 +1,7 @@
 import express from "express";
 import songService from "../service/songService.js";
 import asyncHandler from "../middleware/asyncHandler.js";
-import { success } from "../model/dto/response.js";
+import { message, success } from "../model/dto/response.js";
 import upload from "../middleware/multer.js";
 import {
   authenticateToken,
@@ -63,7 +63,6 @@ router.post(
 
     const files = req.files;
     if (!files || !files.songFile || !files.coverFile) {
-      // Giả sử bạn có hàm badRequest để throw lỗi 400
       badRequest("Both songFile and coverFile are required.");
     }
 
@@ -89,8 +88,8 @@ router.get(
 
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
-
-    const songs = await songService.getSongs();
+    const { page, size } = req.query;
+    const songs = await songService.getSongs({ page, size });
     success(res, songs);
   })
 );
@@ -111,11 +110,21 @@ router.post(
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
-
     const userId = req.user.sub;
     const { songId } = req.body;
-    const result = await songService.removeSong({ userId, songId });
-    success(res, result);
+    await songService.removeSong({ userId, songId });
+    message(res, "Remove success");
+  })
+);
+router.post(
+  "/restore",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const userId = req.user.sub;
+    const { id } = req.body;
+    await songService.restoreSong({ userId, id });
+    message(res, "Restore success");
   })
 );
 

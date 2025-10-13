@@ -1,5 +1,6 @@
 import { Playlist, Song, User } from "../model/entity/index.js";
 import { notFound, badRequest } from "../middleware/errorHandler.js";
+import user from "../model/entity/user.js";
 
 async function createPlaylist({ name, userId }) {
   return await Playlist.create({ name, userId });
@@ -10,7 +11,7 @@ async function addSongToPlaylist(playlistId, songId) {
   if (!playlist) throw notFound("Playlist not found");
   const song = await Song.findByPk(songId);
   if (!song) throw notFound("Song not found");
-  
+
   await playlist.addSong(song);
   return playlist;
 }
@@ -23,7 +24,7 @@ async function getPlaylistsByUser(userId) {
 }
 
 async function getPlaylistById(id) {
-  return await Playlist.findByPk(id, { include: [User, Song] });
+  return await Playlist.findByPk(id, { include: [Song] });
 }
 
 async function removeSongFromPlaylist(playlistId, songId) {
@@ -47,8 +48,15 @@ async function removeBatchSongFromPlaylist(playlistId, songIds) {
   return await playlist.getSongs();
 }
 
-async function deletePlaylist(id) {
-  const playlist = await Playlist.findByPk(id);
+async function deletePlaylist({ userId, id }) {
+  const playlist = await Playlist.findOne({
+    where: id,
+    include: {
+      model: User,
+      as: "user",
+      where: { id: userId },
+    },
+  });
   if (playlist) {
     await playlist.destroy();
   } else {

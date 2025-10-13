@@ -1,0 +1,4 @@
+{
+  "VN": { "zero": true, "code": "VND" },
+  "US": { "zero": false, "code": "USD" }
+}

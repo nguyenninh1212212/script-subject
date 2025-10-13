@@ -13,6 +13,8 @@ const router = express.Router();
 router.get(
   "/random",
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Ads']
+
     const ad = await adsService.getRandomAd();
     success(res, ad || { message: "No active ads available" });
   })
@@ -24,6 +26,8 @@ router.get(
   authenticateToken(true),
   authenticateToken("admin"),
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Ads']
+
     const ads = await adsService.getAllAds();
     success(res, ads);
   })
@@ -34,6 +38,8 @@ router.post(
   authenticateToken(true),
   authenticateToken("admin"),
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Ads']
+
     const newAd = await adsService.createAd(req.body);
     success(res, newAd);
   })

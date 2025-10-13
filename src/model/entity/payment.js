@@ -27,6 +27,10 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.ENUM("subscription", "album", "song"),
         allowNull: false,
       },
+      currencyCode: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
     },
     {
       tableName: "payments",

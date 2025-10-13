@@ -5,11 +5,6 @@
     "description": "API quản lý bài hát, playlist và nghệ sĩ.",
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8000/"
-    }
-  ],
   "tags": [
     {
       "name": "User",
@@ -30,6 +25,10 @@
     {
       "name": "Payment",
       "description": "Thanh toán và gói dịch vụ"
+    },
+    {
+      "name": "Ads",
+      "description": "Quảng cáo"
     }
   ],
   "paths": {
@@ -402,9 +401,6 @@
                   "title": {
                     "example": "any"
                   },
-                  "albumId": {
-                    "example": "any"
-                  },
                   "duration": {
                     "example": "any"
                   }
@@ -419,6 +415,22 @@
           "Song"
         ],
         "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "default": {
             "description": ""
@@ -488,6 +500,33 @@
                 "type": "object",
                 "properties": {
                   "songId": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/songs/restore": {
+      "post": {
+        "tags": [
+          "Song"
+        ],
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
                     "example": "any"
                   }
                 }
@@ -727,6 +766,9 @@
     },
     "/api/ads/random": {
       "get": {
+        "tags": [
+          "Ads"
+        ],
         "description": "",
         "responses": {
           "default": {
@@ -737,6 +779,9 @@
     },
     "/api/ads/": {
       "get": {
+        "tags": [
+          "Ads"
+        ],
         "description": "",
         "responses": {
           "default": {
@@ -745,6 +790,9 @@
         }
       },
       "post": {
+        "tags": [
+          "Ads"
+        ],
         "description": "",
         "responses": {
           "default": {

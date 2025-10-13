@@ -50,15 +50,19 @@ router.get(`/playlist/:id`, async (req, res) => {
 
 router.delete(
   "/:id",
+  authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Playlist']
-    await playlistService.deletePlaylist(req.params.id);
+    const { id } = req.params;
+    const userId = req.user.sub;
+    await playlistService.deletePlaylist({ id, userId });
     success(res, "Delete playlist success", 204);
   })
 );
 
 router.delete(
   "/:playlistId/songs/:songId",
+  authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Playlist']
     await playlistService.deletePlaylist(req.params.id);

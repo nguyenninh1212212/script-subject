@@ -19,6 +19,7 @@ router.get(
 
     const capture = await client().execute(request);
     const result = capture.result.purchase_units[0].payments.captures[0];
+    console.log("🚀 ~ result:", result);
 
     if (result.status === "COMPLETED") {
       const { reference_id } = capture.result.purchase_units[0];
@@ -35,6 +36,7 @@ router.get(
         status: "success",
         paymentType: "subscription",
         transactionId: result.id,
+        currencyCode: "USD",
       });
 
       return message(res, "✅ Thanh toán thành công!");
