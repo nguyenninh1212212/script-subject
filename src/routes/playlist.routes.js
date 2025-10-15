@@ -41,7 +41,7 @@ router.get(
   })
 );
 
-router.get(`/playlist/:id`, async (req, res) => {
+router.get(`/:id`, async (req, res) => {
   // #swagger.tags = ['Playlist']
   const { id } = req.params;
   const playlist = await playlistService.getPlaylistById(id);

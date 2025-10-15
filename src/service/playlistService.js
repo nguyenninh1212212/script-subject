@@ -1,11 +1,11 @@
 import { Playlist, Song, User } from "../model/entity/index.js";
 import { notFound, badRequest } from "../middleware/errorHandler.js";
 
-async function createPlaylist({ name, userId }) {
+const createPlaylist = async ({ name, userId }) => {
   return await Playlist.create({ name, userId });
-}
+};
 
-async function addSongToPlaylist(playlistId, songId) {
+const addSongToPlaylist = async (playlistId, songId) => {
   const playlist = await Playlist.findByPk(playlistId);
   if (!playlist) throw notFound("Playlist not found");
   const song = await Song.findByPk(songId);
@@ -13,28 +13,43 @@ async function addSongToPlaylist(playlistId, songId) {
 
   await playlist.addSong(song);
   return playlist;
-}
+};
 
-async function getPlaylistsByUser(userId) {
+const getPlaylistsByUser = async (userId) => {
   return await Playlist.findAll({
     where: { userId },
   });
-}
+};
 
-async function getPlaylistById(id) {
-  return await Playlist.findByPk(id, { include: [Song] });
-}
+const getPlaylistById = async (id) => {
+  return await Playlist.findByPk(id, {
+    include: [
+      {
+        model: Song,
+        as: "songs",
+        attribute: [
+          "id",
+          "title",
+          "song",
+          "coverImage",
+          "isVipOnly",
+          "albumId",
+        ],
+      },
+    ],
+  });
+};
 
-async function removeSongFromPlaylist(playlistId, songId) {
+const removeSongFromPlaylist = async (playlistId, songId) => {
   const playlist = await Playlist.findByPk(playlistId, {
-    include: { model: Song, as: "song" },
+    include: { model: Song, as: "songs" },
   });
   const song = await Song.findByPk(songId);
   await playlist.removeSong(song);
   return playlist;
-}
+};
 
-async function removeBatchSongFromPlaylist(playlistId, songIds) {
+const removeBatchSongFromPlaylist = async (playlistId, songIds) => {
   if (!songIds?.length) badRequest("No song  provided");
 
   const playlist = await Playlist.findByPk(playlistId);
@@ -46,11 +61,11 @@ async function removeBatchSongFromPlaylist(playlistId, songIds) {
   await playlist.removeSongs(songsInPlaylist);
 
   return await playlist.getSongs();
-}
+};
 
-async function deletePlaylist({ userId, id }) {
+const deletePlaylist = async ({ userId, id }) => {
   const playlist = await Playlist.findOne({
-    where: id,
+    where: { id },
     include: {
       model: User,
       as: "user",
@@ -60,9 +75,9 @@ async function deletePlaylist({ userId, id }) {
   if (playlist) {
     await playlist.destroy();
   } else {
-    notFound("Playlist not found");
+    throw notFound("Playlist not found");
   }
-}
+};
 
 export default {
   createPlaylist,

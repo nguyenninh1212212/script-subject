@@ -8,6 +8,7 @@ import indexRouter from "./src/routes/index.js";
 import swaggerUi from "swagger-ui-express";
 import errorHandler from "./src/middleware/errorHandler.js";
 import { initDB } from "./src/config/init/initdb.js";
+import cookieParser from "cookie-parser";
 
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -25,7 +26,6 @@ app.use(express.static("public"));
 
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
-
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

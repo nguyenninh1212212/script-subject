@@ -8,13 +8,14 @@ import {
 import subscriptionType from "../enum/subscriptionType.js";
 import { alreadyExist, badRequest } from "../middleware/errorHandler.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
+import { uploadFromBuffer } from "../util/cloudinary.js";
 
-async function createArtist({
+const createArtist = async ({
   userId,
   stageName = "Anonymous",
   bio = "",
-  avatarUrl = "",
-}) {
+  avatarFile,
+}) => {
   const existArtPlan = await Subscription.count({
     include: [
       {
@@ -33,6 +34,8 @@ async function createArtist({
     },
   });
 
+  let avatarUpload;
+
   if (existArtPlan == 0) badRequest("You need to subscripe artist plan");
   const exist = await Artist.findOne({
     where: { userId },
@@ -42,10 +45,20 @@ async function createArtist({
   if (exist) {
     alreadyExist("Artist");
   }
-  return await Artist.create({ userId, stageName, bio, avatarUrl });
-}
+  if (avatarFile) {
+    avatarUpload = await uploadFromBuffer(avatarFile.buffer, "avatars");
+  } else {
+    avatarUpload = null;
+  }
+  await Artist.create({
+    userId,
+    stageName,
+    bio,
+    avatarUrl: avatarUpload.public_id,
+  });
+};
 
-async function getArtists({ page = 1, size = 10 }) {
+const getArtists = async ({ page = 1, size = 10 }) => {
   const { limit, offset } = getPagination(page, size);
 
   const data = await Artist.findAndCountAll({
@@ -54,15 +67,15 @@ async function getArtists({ page = 1, size = 10 }) {
     offset,
   });
   return getPagingData(data, page, limit);
-}
+};
 
-async function getArtistByUserId(userId) {
+const getArtistByUserId = async (userId) => {
   return await Artist.findOne({
     where: { userId },
   });
-}
+};
 
-async function getArtist({ id }) {
+const getArtist = async ({ id }) => {
   return await Artist.findByPk(id, {
     include: [
       {
@@ -78,11 +91,31 @@ async function getArtist({ id }) {
     ],
     attributes: ["id", "stageName", "bio", "avatarUrl", "verified"],
   });
-}
+};
+
+const myArtist = async ({ userId }) => {
+  return await Artist.findOne({
+    where: { userId },
+    include: [
+      {
+        model: Album,
+        as: "album",
+        attributes: ["id", "title", "coverUrl"],
+      },
+      {
+        model: Song,
+        as: "song",
+        attributes: ["id", "coverImage", "isVipOnly", "title"],
+      },
+    ],
+    attributes: ["id", "stageName", "bio", "avatarUrl", "verified"],
+  });
+};
 
 export default {
   createArtist,
   getArtists,
   getArtistByUserId,
   getArtist,
+  myArtist,
 };

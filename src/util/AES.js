@@ -21,7 +21,6 @@ function AESDecrypt(data) {
   const dataBuffer = Buffer.from(data, "base64");
   const iv = dataBuffer.subarray(0, 16);
   const encryptedText = dataBuffer.subarray(16);
-
   const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
   const decrypted = Buffer.concat([
     decipher.update(encryptedText),

@@ -10,7 +10,7 @@ export default (sequelize, DataTypes) => {
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
-        unique: true, // ✅ mỗi user chỉ có 1 hồ sơ nghệ sĩ
+        unique: true,
       },
       stageName: {
         type: DataTypes.STRING,

@@ -51,12 +51,6 @@ router.post(
         type: 'integer',
         description: 'ID of the album this song belongs to (optional).'
     }
-    #swagger.parameters['duration'] = {
-        in: 'formData',
-        type: 'string',
-        required: 'true',
-        description: 'Duration of the song (e.g., "3:45").'
-    }
 */
     // #endregion
     const { title, duration } = req.body;

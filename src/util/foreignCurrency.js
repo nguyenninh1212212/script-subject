@@ -24,7 +24,6 @@ async function getExchangeRate(fromCurrency, toCurrency) {
 }
 
 async function convertCurrency(amount, from, to) {
-  console.log(`Đang chuyển đổi ${amount} ${from} sang ${to}...`);
   const rate = await getExchangeRate(from, to);
 
   if (rate) {

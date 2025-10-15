@@ -1,6 +1,7 @@
 import { Subscription, SubscriptionPlan } from "../model/entity/index.js";
 import { notFound, badRequest } from "../middleware/errorHandler.js";
 import sequelize from "../config/db.config.js";
+import { getPagination, getPagingData } from "../util/pagination.js";
 
 const createSubscription = async ({ userId, planId }) => {
   const t = await sequelize.transaction();
@@ -61,8 +62,18 @@ const checkSubscription = async ({ userId, type, status = "ACTIVE" }) => {
   return subscription ? true : false;
 };
 
+const getSubscriptions = async ({ userId }) => {
+  const { limit, offset } = getPagination(1, 10);
+  return await Subscription.findAndCountAll({
+    where: { userId },
+    limit,
+    offset,
+  });
+};
+
 export default {
   createSubscription,
   checkActiveSubscription,
   checkSubscription,
+  getSubscriptions,
 };

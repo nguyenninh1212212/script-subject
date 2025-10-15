@@ -13,7 +13,7 @@ import subscriptionService from "./subscriptionService.js";
 const PAYPAL_SUCCESS_URL = process.env.PAYPAL_SUCCESS_URL;
 const PAYPAL_CANCEL_URL = process.env.PAYPAL_CANCEL_URL;
 
-async function createPayment({
+const createPayment= async({
   userId,
   planId,
   amount,
@@ -22,7 +22,7 @@ async function createPayment({
   paymentType,
   transactionId,
   currencyCode,
-}) {
+})=> {
   const subscription = await subscriptionService.createSubscription({userId,planId});
   return await Payment.create({
     userId,
@@ -37,26 +37,15 @@ async function createPayment({
 
 }
 
-async function getPaymentsByUser(userId) {
-  return await Payment.findAll({
-    where: { userId },
-    include: [Subscription],
-  });
-}
-
-async function createOrderPaypal({ planId, userId }, geo) {
-  console.log("🚀 ~ createOrderPaypal ~ geo:", geo);
+const createOrderPaypal= async({ planId, userId }, geo) =>{
   const plan = await SubscriptionPlan.findByPk(planId);
   if (!plan) {
     notFound("Subscription plan not found");
   }
-  
   const priceAsNumber = plan.price; 
-
   const country = geo ? geo.country : "US";
   const current =currentMap[country]
   const currencyCode = country ? current.code : "USD";
-
   const convertedValue = await convertCurrency(priceAsNumber, "USD", currencyCode);
   let formattedValue;
   if (current.zero) {
@@ -89,4 +78,11 @@ async function createOrderPaypal({ planId, userId }, geo) {
   return approveUrl;
 }
 
-export default { createPayment, getPaymentsByUser, createOrderPaypal };
+const getPaymentHistory=async ({userId})=>{
+   return await Payment.findAll({
+    where: { userId },
+    attribute:["id","amount","method","status","transactionId","paymentType","createdAt","subscriptionId","currencyCode"]
+  });
+}
+
+export default { createPayment, createOrderPaypal,getPaymentHistory };

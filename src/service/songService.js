@@ -7,7 +7,7 @@ import { uploadFromBuffer, deleteFromCloudinary } from "../util/cloudinary.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { Op } from "sequelize";
 
-async function createSong({ title, userId, songFile, coverFile, duration }) {
+const createSong = async ({ title, userId, songFile, coverFile, duration }) => {
   const artistId = await Artist.findOne({
     where: { userId },
     arttibutes: ["id"],
@@ -26,9 +26,9 @@ async function createSong({ title, userId, songFile, coverFile, duration }) {
     song: songUpload.public_id,
     coverImage: coverUpload.public_id,
   });
-}
+};
 
-export const getSongs = async ({ page, size }) => {
+const getSongs = async ({ page, size }) => {
   const { limit, offset } = getPagination(page, size);
 
   const data = await Song.findAndCountAll({
@@ -46,7 +46,7 @@ export const getSongs = async ({ page, size }) => {
   return getPagingData(data, page, limit);
 };
 
-export const getSong = async ({ userId, id }) => {
+const getSong = async ({ userId, id }) => {
   const song = await Song.findByPk(id.id, {
     include: [
       {
@@ -83,7 +83,7 @@ export const getSong = async ({ userId, id }) => {
   return { song, ads: null };
 };
 
-async function removeSong({ userId, songId }) {
+const removeSong = async ({ userId, songId }) => {
   const song = await Song.findOne({
     where: { id: songId },
     include: [{ model: Artist, as: "artist", attributes: ["userId"] }],
@@ -94,14 +94,14 @@ async function removeSong({ userId, songId }) {
     badRequest("You are not the owner of this song");
 
   await song.destroy();
-}
+};
 
-async function deleteSong(songId) {
+const deleteSong = async (songId) => {
   await Song.destroy({
     where: { id: songId },
   });
-}
-async function restoreSong({ userId, id }) {
+};
+const restoreSong = async ({ userId, id }) => {
   const artist = await Artist.findOne({
     where: { userId: userId },
     attributes: ["id"],
@@ -130,9 +130,9 @@ async function restoreSong({ userId, id }) {
   } else {
     notFound("Song");
   }
-}
+};
 
-async function updateSong({ id, userId, data, coverFile }) {
+const updateSong = async ({ id, userId, data, coverFile }) => {
   const song = await Song.findByPk(id);
   if (!song) {
     notFound("Song not found");
@@ -153,7 +153,7 @@ async function updateSong({ id, userId, data, coverFile }) {
   await song.update(data);
 
   return song;
-}
+};
 
 export default {
   createSong,

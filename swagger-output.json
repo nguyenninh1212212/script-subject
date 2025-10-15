@@ -105,6 +105,33 @@
         }
       }
     },
+    "/api/user/refresh": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/": {
       "get": {
         "tags": [
@@ -231,8 +258,8 @@
         }
       }
     },
-    "/api/payments/paypal/create-order": {
-      "post": {
+    "/api/payments/": {
+      "get": {
         "tags": [
           "Payment"
         ],
@@ -240,20 +267,6 @@
         "responses": {
           "default": {
             "description": ""
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "planId": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -264,6 +277,35 @@
           "Artist"
         ],
         "description": "",
+        "parameters": [
+          {
+            "name": "avatarFile",
+            "in": "formData",
+            "required": true,
+            "description": "Artist avatar image.",
+            "schema": {
+              "type": "file"
+            }
+          },
+          {
+            "name": "stageName",
+            "in": "formData",
+            "required": true,
+            "description": "Stage name of the artist.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bio",
+            "in": "formData",
+            "required": false,
+            "description": "Short biography.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "default": {
             "description": ""
@@ -279,9 +321,6 @@
                     "example": "any"
                   },
                   "bio": {
-                    "example": "any"
-                  },
-                  "avatarUrl": {
                     "example": "any"
                   }
                 }
@@ -318,6 +357,16 @@
             }
           }
         ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/artists/me": {
+      "get": {
+        "description": "",
         "responses": {
           "default": {
             "description": ""
@@ -505,10 +554,6 @@
         }
       },
       "patch": {
-        "tags": [
-          "Song"
-        ],
-        "summary": "Cập nhật bài hát",
         "description": "",
         "parameters": [
           {
@@ -523,21 +568,6 @@
         "responses": {
           "default": {
             "description": ""
-          }
-        },
-        "requestBody": {
-          "description": "Dữ liệu bất kỳ để cập nhật bài hát.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            },
-            "application/xml": {
-              "schema": {
-                "type": "object"
-              }
-            }
           }
         }
       }
@@ -696,7 +726,7 @@
         }
       }
     },
-    "/api/playlists/playlist/{id}": {
+    "/api/playlists/{id}": {
       "get": {
         "tags": [
           "Playlist"
@@ -717,9 +747,7 @@
             "description": ""
           }
         }
-      }
-    },
-    "/api/playlists/{id}": {
+      },
       "delete": {
         "tags": [
           "Playlist"

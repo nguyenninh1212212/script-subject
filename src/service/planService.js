@@ -1,17 +1,17 @@
 import { SubscriptionPlan } from "../model/entity/index.js";
 
-async function createPlan({ name, price, duration, type }) {
+const createPlan = async ({ name, price, duration, type }) => {
   return await SubscriptionPlan.create({
     name,
     price,
     duration,
     type,
   });
-}
+};
 
-async function getPlans() {
+const getPlans = async () => {
   return await SubscriptionPlan.findAll();
-}
+};
 
 const TypePlan = async ({ planId }) => {
   const plan = await SubscriptionPlan.findByPk(planId);

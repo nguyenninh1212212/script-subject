@@ -15,7 +15,12 @@ router.post(
     // #swagger.tags = ['User']
     const { username, password } = req.body;
     const token = await userService.login({ username, password });
-    success(res, token);
+    res.cookie("refreshToken", token.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    success(res, token.token);
   })
 );
 
@@ -27,6 +32,15 @@ router.post(
     const { username, email, password } = req.body;
     await userService.register({ username, email, password });
     message(res, "Register success", 201);
+  })
+);
+router.get(
+  "/refresh",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['User']
+    const refreshToken = req.cookies.refreshToken;
+    const newToken = await userService.refreshToken({ refreshToken });
+    success(res, newToken);
   })
 );
 
@@ -45,7 +59,6 @@ router.post(
   "/change-password",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
-
     const { username, newPassword, oldPassword } = req.body;
     await userService.changePassword(username, oldPassword, newPassword);
     message(res, "Password changed successfully");
@@ -68,7 +81,12 @@ router.post(
     // #swagger.tags = ['User']
     const { credential } = req.body;
     const result = await userService.googleLogin({ credential });
-    success(res, result);
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    success(res, result.token);
   })
 );
 

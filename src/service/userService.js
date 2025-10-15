@@ -10,11 +10,13 @@ import {
   unauthorized,
 } from "../middleware/errorHandler.js";
 import { Op, where } from "sequelize";
-import role from "../model/entity/role.js";
+import { AESDecrypt } from "../util/AES.js";
+import jwt from "jsonwebtoken";
+import { forbidden } from "../middleware/errorHandler.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-async function register({ username, email, password }) {
+const register = async ({ username, email, password }) => {
   const invalidEmail = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (invalidEmail) {
     throw createError(400, "Invalid email format");
@@ -44,9 +46,9 @@ async function register({ username, email, password }) {
   }
 
   return user;
-}
+};
 
-async function login({ username, password }) {
+const login = async ({ username, password }) => {
   const user = await User.findOne({
     where: {
       [Op.or]: [{ username }, { email: username }], // cho phép login bằng username hoặc email
@@ -78,6 +80,7 @@ async function login({ username, password }) {
     {
       sub: user.id,
       roles: roleNames,
+      isRefresh: true,
     },
     "7d"
   );
@@ -85,13 +88,13 @@ async function login({ username, password }) {
   user.refreshToken = refreshToken;
   await user.save();
   return { token, refreshToken };
-}
+};
 
-async function getUsers() {
+const getUsers = async () => {
   return await User.findAll({ include: ["roles", "subscription"] });
-}
+};
 
-async function changePassword(username, oldPassword, newPassword) {
+const changePassword = async (username, oldPassword, newPassword) => {
   const user = await User.findOne({
     where: { [Op.or]: [{ username }, { email: username }] },
   });
@@ -104,18 +107,18 @@ async function changePassword(username, oldPassword, newPassword) {
   }
   user.password = await bcrypt.hash(newPassword, 10);
   await user.save();
-}
+};
 
-async function logout(userId) {
+const logout = async (userId) => {
   const user = await User.findByPk(userId);
   if (!user) {
     notFound("User not found");
   }
   user.refreshToken = null;
   await user.save();
-}
+};
 
-async function googleLogin({ credential }) {
+const googleLogin = async ({ credential }) => {
   const ticket = await client.verifyIdToken({
     idToken: credential,
     audience: process.env.GOOGLE_CLIENT_ID,
@@ -156,11 +159,58 @@ async function googleLogin({ credential }) {
     {
       sub: user.id,
       roles: roleNames,
+      isRefresh: true,
     },
     "7d"
   );
+  user.refreshToken = refreshToken;
+  await user.save();
   return { token, refreshToken };
-}
+};
+
+const refreshToken = async ({ refreshToken }) => {
+  console.log("🚀 ~ refreshToken ~ refreshToken:", refreshToken);
+  if (!refreshToken) {
+    throw unauthorized("Refresh token not found");
+  }
+  console.log("🚀 ~ refreshToken ~ refreshToken:", refreshToken);
+
+  let payload;
+  try {
+    payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+  } catch (err) {
+    throw forbidden("Invalid or expired refresh token");
+  }
+  let decryptedData;
+  try {
+    decryptedData = AESDecrypt(payload.data);
+  } catch (err) {
+    forbidden("Failed to decrypt refresh token payload");
+  }
+
+  if (!decryptedData.isRefresh) {
+    throw unauthorized("Invalid token type");
+  }
+
+  const user = await User.findOne({
+    where: {
+      id: decryptedData.sub,
+      refreshToken,
+    },
+  });
+  if (!user) {
+    throw unauthorized("Invalid or revoked refresh token");
+  }
+
+  const roles = await user.getRoles();
+  const roleNames = roles.map((r) => r.name);
+
+  const newAccessToken = generateToken({
+    sub: user.id,
+    roles: roleNames,
+  });
+  return newAccessToken;
+};
 
 export default {
   register,
@@ -169,4 +219,5 @@ export default {
   changePassword,
   logout,
   googleLogin,
+  refreshToken,
 };
