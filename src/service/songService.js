@@ -1,4 +1,4 @@
-import { Song, Album, Artist } from "../model/entity/index.js";
+import { Song, Album, Artist, User } from "../model/entity/index.js";
 import { notFound, badRequest } from "../middleware/errorHandler.js";
 import subscriptionService from "../service/subscriptionService.js";
 import subscriptionType from "../enum/subscriptionType.js";
@@ -60,6 +60,7 @@ const getSong = async ({ userId, id }) => {
         attributes: ["id", "stageName", "avatarUrl"],
       },
     ],
+    attributes: ["id", "title", "song", "coverImage", "isVipOnly", "createdAt"],
   });
   if (!song) {
     return null;
@@ -154,6 +155,33 @@ const updateSong = async ({ id, userId, data, coverFile }) => {
 
   return song;
 };
+const addToFavoutite = async ({ userId, songId }) => {
+  const user = User.findByPk(userId);
+  const song = Song.findByPk(songId);
+  if (!user) badRequest("User not existing");
+  if (!song) badRequest("Song not exist");
+  await user.addFavoriteSong(song);
+};
+
+const getFavourite = async ({ userId }, page, size) => {
+  const user = await User.findByPk(userId);
+  if (!user) badRequest("User not existing");
+  const { limit, offset } = getPagination(page, size);
+  const songs = await user.getFavoriteSongs({
+    limit: limit,
+    offset: offset,
+    order: [["createdAt", "ASC"]],
+  });
+
+  return getPagingData(songs, page, size);
+};
+const deleteFavourite = async ({ id, userId }) => {
+  const user = User.findByPk(userId);
+  const song = Song.findByPk(id);
+  if (!user) badRequest("User not existing");
+  if (!song) badRequest("Song not exist");
+  await user.removeFavoriteSong(song);
+};
 
 export default {
   createSong,
@@ -163,4 +191,7 @@ export default {
   getSong,
   restoreSong,
   updateSong,
+  addToFavoutite,
+  getFavourite,
+  deleteFavourite,
 };

@@ -20,18 +20,41 @@ router.get(
 );
 
 router.post(
-  "/subcribe",
+  "/subcribe/:id",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Subscription']
-    const { planId } = req.body;
+
+    const { id } = req.params;
     const userId = req.user.sub;
     const ip = req.ip;
     const geo = geoip.lookup(ip);
-    const approveUrl = await paymentService.createOrderPaypal(
+    const approveUrl = await paymentService.createSubscriptionOrderPaypal(
       {
-        planId,
+        planId:id,
         userId,
+        type: "subscription",
+      },
+      geo
+    );
+    success(res, approveUrl);
+  })
+);
+
+router.post(
+  "/renew/:subscriptionId",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Subscription']
+    const { subscriptionId } = req.params;
+    const userId = req.user.sub;
+    const ip = req.ip;
+    const geo = geoip.lookup(ip);
+    const approveUrl = await paymentService.createSubscriptionOrderPaypal(
+      {
+        subscriptionId,
+        userId,
+        type: "renewSubscription",
       },
       geo
     );

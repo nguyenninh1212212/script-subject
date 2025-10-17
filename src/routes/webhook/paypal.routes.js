@@ -6,6 +6,7 @@ import paymentService from "../../service/paymentService.js";
 import { notFound } from "../../middleware/errorHandler.js";
 import asyncHandler from "../../middleware/asyncHandler.js";
 import { message } from "../../model/dto/response.js";
+import subscriptionService from "../../service/subscriptionService.js";
 
 const router = express.Router();
 
@@ -22,21 +23,29 @@ router.get(
 
     if (result.status === "COMPLETED") {
       const { reference_id } = capture.result.purchase_units[0];
-      const [planId, userId] = reference_id.split("|");
+      const [planId, userId, type] = reference_id.split("|");
       if (!userId || !planId) {
         notFound("Missing in the order");
       }
 
       await paymentService.createPayment({
         userId: userId,
-        planId: planId,
         amount: result.amount.value,
         method: "paypal",
         status: "success",
-        paymentType: "subscription",
+        paymentType: type,
         transactionId: result.id,
         currencyCode: "USD",
       });
+
+      if (type == "subscription") {
+        await subscriptionService.createSubscription({
+          userId,
+          planId,
+        });
+      } else if ((type = "renewSubscription")) {
+        await subscriptionService.renewSubscription({ userId, id: planId });
+      }
 
       return message(res, "✅ Thanh toán thành công!");
     }

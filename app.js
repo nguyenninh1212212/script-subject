@@ -8,7 +8,6 @@ import indexRouter from "./src/routes/index.js";
 import swaggerUi from "swagger-ui-express";
 import errorHandler from "./src/middleware/errorHandler.js";
 import { initDB } from "./src/config/init/initdb.js";
-
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 dotenv.config();

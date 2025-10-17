@@ -62,18 +62,6 @@ User.hasMany(Payment, { foreignKey: "userId", as: "payments" });
 Payment.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 // =======================
-// Quan hệ Subscription <-> Payment (1-N)
-// =======================
-Subscription.hasMany(Payment, {
-  foreignKey: "subscriptionId",
-  as: "payments",
-});
-Payment.belongsTo(Subscription, {
-  foreignKey: "subscriptionId",
-  as: "subscription",
-});
-
-// =======================
 // Quan hệ User <-> Artist (1-1)
 // =======================
 User.hasOne(Artist, { foreignKey: "userId", as: "artist" });
@@ -114,6 +102,11 @@ Song.belongsToMany(Playlist, { through: "PlaylistSong", as: "playlists" });
 // =======================
 User.belongsToMany(Song, { through: "FavoriteSong", as: "favoriteSongs" });
 Song.belongsToMany(User, { through: "FavoriteSong", as: "likedByUsers" });
+// =======================
+// Follower (User <-> Artist) (N-N)
+// =======================
+User.belongsToMany(Artist, { through: "Follower", as: "follows" });
+Artist.belongsToMany(User, { through: "Follower", as: "followers" });
 
 // =======================
 // Favorite Albums (User <-> Album) (N-N)

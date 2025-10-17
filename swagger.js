@@ -29,6 +29,14 @@ const doc = {
       in: "header",
     },
   },
+  components: {
+    schemas: {
+      PaymentType: {
+        type: "string",
+        enum: ["subscription", "album", "renewSubscription"],
+      },
+    },
+  },
   security: [{ bearerAuth: [] }],
 };
 

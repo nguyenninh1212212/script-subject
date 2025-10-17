@@ -24,7 +24,11 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.STRING,
       }, // id từ cổng thanh toán
       paymentType: {
-        type: DataTypes.ENUM("subscription", "album", "song"),
+        type: DataTypes.ENUM("subscription", "album", "renewSubscription"),
+        allowNull: false,
+      },
+      desciption: {
+        type: DataTypes.TEXT,
         allowNull: false,
       },
       currencyCode: {

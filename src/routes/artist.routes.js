@@ -1,5 +1,6 @@
 import express from "express";
 import artistService from "../service/artistService.js";
+import followService from "../service/followService.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import { message, success } from "../model/dto/response.js";
@@ -81,5 +82,22 @@ router.get(
     success(res, artist);
   })
 );
-
+router.post(
+  "/follow/:id",
+  asyncHandler(async (req, res) => {
+    const userId = req.user.sub;
+    const { id } = req.params;
+    await followService.follow({ userId, artistId: id });
+    success(res, artist);
+  })
+);
+router.delete(
+  "/unfollow/:id",
+  asyncHandler(async (req, res) => {
+    const userId = req.user.sub;
+    const { id } = req.params;
+    await followService.unFollow({ userId, artistId: id });
+    success(res, artist);
+  })
+);
 export default router;

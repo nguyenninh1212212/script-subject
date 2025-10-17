@@ -167,4 +167,35 @@ router.patch(
   })
 );
 
+router.post(
+  "/favorite/:songId",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    const userId = req.user.sub;
+    const { songId } = req.params;
+    await songService.addToFavoutite({ userId, songId });
+    message(res, "success");
+  })
+);
+router.get(
+  "/favorite",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    const { page = 1, size = 10 } = req.query;
+    const userId = req.user.sub;
+    const favourites = await songService.getFavourite({ userId }, page, size);
+    success(res, favourites);
+  })
+);
+router.delete(
+  "/favorite",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    const userId = req.user.sub;
+    const { songId } = req.params;
+    await songService.deleteFavourite({ id, songId });
+    message(res, "success");
+  })
+);
+
 export default router;

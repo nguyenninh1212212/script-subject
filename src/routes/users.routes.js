@@ -17,7 +17,7 @@ router.post(
     const token = await userService.login({ username, password });
     res.cookie("refreshToken", token.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV == true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     success(res, token.token);
