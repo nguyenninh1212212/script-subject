@@ -10,6 +10,7 @@ import errorHandler from "./src/middleware/errorHandler.js";
 import { initDB } from "./src/config/init/initdb.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import cors from "cors";
 dotenv.config();
 
 const swaggerPath = path.resolve("./swagger-output.json");
@@ -20,6 +21,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+  })
+);
+
 app.use(express.static("public"));
 
 app.use(logger("dev"));

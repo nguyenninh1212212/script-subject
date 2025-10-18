@@ -92,7 +92,6 @@ const defaultTestdata = async () => {
       }
     }
   } catch (error) {
-    console.log("❌ Error default test data:", error);
   }
 };
 

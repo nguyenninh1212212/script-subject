@@ -4,7 +4,8 @@ import seedRoles from "./seedRoles.js";
 import defaultTestdata from "./defaultTestdata.js";
 
 export const initDB = async () => {
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = process.env.IS_DEV === "Y";
+  console.log("🚀 ~ initDB ~ isDev:", isDev);
   try {
     console.log("🟢 Connecting database...");
     await sequelize.authenticate();
@@ -13,8 +14,8 @@ export const initDB = async () => {
     await sequelize.sync({ force: isDev });
     console.log("✅ Database synced!");
 
+    await seedRoles();
     if (isDev) {
-      await seedRoles();
       await defaultTestdata();
       console.log("🌱 Data seeded success!");
     }

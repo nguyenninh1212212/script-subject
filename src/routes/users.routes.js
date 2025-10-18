@@ -17,7 +17,7 @@ router.post(
     const token = await userService.login({ username, password });
     res.cookie("refreshToken", token.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV == true,
+      secure: process.env.IS_DEV == "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     success(res, token.token);
@@ -29,8 +29,8 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
 
-    const { username, email, password } = req.body;
-    await userService.register({ username, email, password });
+    const { username, email, password, name } = req.body;
+    await userService.register({ username, email, password, name });
     message(res, "Register success", 201);
   })
 );
@@ -83,7 +83,7 @@ router.post(
     const result = await userService.googleLogin({ credential });
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.IS_DEV === "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     success(res, result.token);

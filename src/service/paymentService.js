@@ -8,7 +8,6 @@ import client from "../config/payment_wallet/paypal.config.js";
 import paypal from "@paypal/checkout-server-sdk";
 import { convertCurrency } from "../util/foreignCurrency.js";
 import currentMap from "../../currentCode.json" with  { type: "json" };
-import subscriptionService from "./subscriptionService.js";
 import { notFound } from "../middleware/errorHandler.js";
 
 const PAYPAL_SUCCESS_URL = process.env.PAYPAL_SUCCESS_URL;
@@ -105,4 +104,4 @@ const getPaymentHistory=async ({userId})=>{
   });
 }
 
-export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal };
+export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal };

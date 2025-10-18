@@ -11,6 +11,7 @@ export default (sequelize, DataTypes) => {
         allowNull: false,
       },
       username: { type: DataTypes.STRING, allowNull: true, unique: true },
+      name: { type: DataTypes.STRING, allowNull: true, unique: true },
       email: { type: DataTypes.STRING, allowNull: true, unique: true },
       password: { type: DataTypes.STRING, allowNull: true },
       refreshToken: { type: DataTypes.TEXT, allowNull: true },

@@ -16,12 +16,12 @@ import { forbidden } from "../middleware/errorHandler.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const register = async ({ username, email, password }) => {
+const register = async ({ username, email, password, name }) => {
   const invalidEmail = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (invalidEmail) {
     throw createError(400, "Invalid email format");
   }
-  if (!username || !password || !email) {
+  if (!username || !password || !email || !name) {
     badRequest("Invalid input");
   }
 
@@ -33,6 +33,7 @@ const register = async ({ username, email, password }) => {
       username,
       email,
       password: hashPassword,
+      name,
     },
   });
 

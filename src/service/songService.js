@@ -70,6 +70,7 @@ const getSong = async ({ userId, id }) => {
     userId,
     type: subscriptionType.USER,
   });
+  await Song.increment("view", { by: 1, where: id });
 
   if (isSubscription) {
     return { song: song, ads: null };

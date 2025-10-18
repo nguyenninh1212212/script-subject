@@ -19,7 +19,13 @@ const createAlbum = async ({ title, userId, coverFile }) => {
 const getAlbums = async ({ page, size }) => {
   const { limit, offset } = getPagination(page, size);
   const data = await Album.findAndCountAll({
-    include: [Artist, "songs"],
+    include: [
+      {
+        model: Artist,
+        as: "artist",
+        attributes: ["id", "stageName", "avatarUrl", "verified"],
+      },
+    ],
     limit,
     offset,
   });
