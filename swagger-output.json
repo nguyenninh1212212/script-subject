@@ -97,6 +97,9 @@
                   },
                   "password": {
                     "example": "any"
+                  },
+                  "name": {
+                    "example": "any"
                   }
                 }
               }
@@ -282,35 +285,6 @@
           "Artist"
         ],
         "description": "",
-        "parameters": [
-          {
-            "name": "avatarFile",
-            "in": "formData",
-            "required": true,
-            "description": "Artist avatar image.",
-            "schema": {
-              "type": "file"
-            }
-          },
-          {
-            "name": "stageName",
-            "in": "formData",
-            "required": true,
-            "description": "Stage name of the artist.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "bio",
-            "in": "formData",
-            "required": false,
-            "description": "Short biography.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "default": {
             "description": ""
@@ -327,6 +301,15 @@
                   },
                   "bio": {
                     "example": "any"
+                  },
+                  "youtubeUrl": {
+                    "example": "any"
+                  },
+                  "facebookUrl": {
+                    "example": "any"
+                  },
+                  "instagramUrl": {
+                    "example": "any"
                   }
                 }
               }
@@ -339,6 +322,22 @@
           "Artist"
         ],
         "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "default": {
             "description": ""
@@ -371,6 +370,9 @@
     },
     "/api/artists/me": {
       "get": {
+        "tags": [
+          "Artist"
+        ],
         "description": "",
         "responses": {
           "default": {
@@ -381,6 +383,9 @@
     },
     "/api/artists/follow/{id}": {
       "post": {
+        "tags": [
+          "Artist"
+        ],
         "description": "",
         "parameters": [
           {
@@ -401,12 +406,73 @@
     },
     "/api/artists/unfollow/{id}": {
       "delete": {
+        "tags": [
+          "Artist"
+        ],
         "description": "",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/artists/myFollowers": {
+      "get": {
+        "tags": [
+          "Artist"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/artists/follows": {
+      "get": {
+        "tags": [
+          "Artist"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -473,6 +539,36 @@
         }
       }
     },
+    "/api/albums/{id}/add/song": {
+      "post": {
+        "tags": [
+          "Album"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "songId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/albums/{id}": {
       "get": {
         "tags": [
@@ -517,7 +613,7 @@
         }
       }
     },
-    "/api/albums/{id}/song/{songid}": {
+    "/api/albums/{id}/song": {
       "post": {
         "tags": [
           "Album"
@@ -533,9 +629,8 @@
             }
           },
           {
-            "name": "songid",
-            "in": "path",
-            "required": true,
+            "name": "songId",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -687,6 +782,9 @@
         }
       },
       "patch": {
+        "tags": [
+          "Song"
+        ],
         "description": "",
         "parameters": [
           {
@@ -761,6 +859,9 @@
     },
     "/api/songs/favorite/{songId}": {
       "post": {
+        "tags": [
+          "Song"
+        ],
         "description": "",
         "parameters": [
           {
@@ -781,6 +882,9 @@
     },
     "/api/songs/favorite": {
       "get": {
+        "tags": [
+          "Song"
+        ],
         "description": "",
         "parameters": [
           {
@@ -805,6 +909,9 @@
         }
       },
       "delete": {
+        "tags": [
+          "Song"
+        ],
         "description": "",
         "responses": {
           "default": {
@@ -1068,6 +1175,51 @@
         "tags": [
           "Ads"
         ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "example": "any"
+                  },
+                  "redirectUrl": {
+                    "example": "any"
+                  },
+                  "startDate": {
+                    "example": "any"
+                  },
+                  "endDate": {
+                    "example": "any"
+                  },
+                  "isActive": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/": {
+      "get": {
         "description": "",
         "responses": {
           "default": {

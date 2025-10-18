@@ -10,47 +10,28 @@ const router = express.Router();
 
 router.post(
   "/",
-  upload.single("avatarFile"),
+  upload.fields([
+    { name: "avatarFile", maxCount: 1 },
+    { name: "bannerFile", maxCount: 1 },
+  ]),
   authenticateToken(true),
   asyncHandler(async (req, res) => {
-    // #region Swagger
-    /* #swagger.tags = ['Artist']
-       #swagger.consumes = ['multipart/form-data']
-
-       #swagger.parameters['avatarFile'] = {
-           in: 'formData',
-           type: 'file',
-           required: true,
-           description: 'Artist avatar image.'
-       }
-
-       #swagger.parameters['stageName'] = {
-           in: 'formData',
-           type: 'string',
-           required: true,
-           description: 'Stage name of the artist.'
-       }
-
-       #swagger.parameters['bio'] = {
-           in: 'formData',
-           type: 'string',
-           required: false,
-           description: 'Short biography.'
-       }
-    */
-    // #endregion
+    // #swagger.tags = ['Artist']
 
     const userId = req.user.sub;
-    const avatarFile = req.file;
-    const { stageName, bio } = req.body;
+    const files = req.files;
+    const avatarFile = files.avatarFile[0];
+    const bannerFile = files.bannerFile[0];
+    const { stageName, bio, youtubeUrl, facebookUrl, instagramUrl } = req.body;
 
     await artistService.createArtist({
       userId,
       stageName,
       bio,
       avatarFile,
+      bannerFile,
+      socialMedia: { youtubeUrl, facebookUrl, instagramUrl },
     });
-
     message(res, "Artist created successfully!! ✅", 201);
   })
 );
@@ -59,9 +40,8 @@ router.get(
   "/",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Artist']
-    const { page, size } = req.params;
-    const artists = await artistService.getArtists({ page, size });
-    success(res, artists);
+    const { page, size } = req.query;
+    success(res, await artistService.getArtists({ page, size }));
   })
 );
 router.get(
@@ -77,6 +57,7 @@ router.get(
 router.get(
   "/me",
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Artist']
     const userId = req.user.sub;
     const artist = await artistService.myArtist({ userId });
     success(res, artist);
@@ -85,6 +66,7 @@ router.get(
 router.post(
   "/follow/:id",
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Artist']
     const userId = req.user.sub;
     const { id } = req.params;
     await followService.follow({ userId, artistId: id });
@@ -94,9 +76,31 @@ router.post(
 router.delete(
   "/unfollow/:id",
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Artist']
     const userId = req.user.sub;
     const { id } = req.params;
     await followService.unFollow({ userId, artistId: id });
+    success(res, artist);
+  })
+);
+router.get(
+  "/myFollowers",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Artist']
+    const userId = req.user.sub;
+    const { page, size } = req.query;
+    await followService.myFollowers(userId, { page, size });
+    success(res, artist);
+  })
+);
+router.get(
+  "/follows",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Artist']
+    const userId = req.user.sub;
+    const { page, size } = req.query;
+    await followService.artistFollow(userId, { page, size });
     success(res, artist);
   })
 );

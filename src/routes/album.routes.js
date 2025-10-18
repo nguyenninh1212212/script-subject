@@ -20,6 +20,27 @@ router.post(
   })
 );
 
+router.post(
+  "/:id/add/song",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Album']
+
+    const userId = req.user.sub;
+    const { id } = req.params;
+    const { songId } = req.query;
+    // The service now returns the updated song
+    const updatedSong = await albumService.addSongToAlbum({
+      id,
+      songId,
+      userId,
+    });
+
+    // Send a success message or the updated object
+    success(res, updatedSong);
+  })
+);
+
 router.get(
   "/",
   asyncHandler(async (req, res) => {
@@ -52,12 +73,13 @@ router.delete(
 );
 
 router.post(
-  "/:id/song/:songid",
+  "/:id/song",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Album']
     const userId = req.user.sub;
-    const { id, songId } = req.params;
+    const { id } = req.params;
+    const { songId } = req.query;
     const albums = await albumService.deleteSongAlbum({ id, songId, userId });
     success(res, albums);
   })

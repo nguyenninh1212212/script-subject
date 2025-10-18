@@ -15,7 +15,10 @@ const createArtist = async ({
   stageName = "Anonymous",
   bio = "",
   avatarFile,
+  bannerFile,
+  socialMedia,
 }) => {
+  const { youtubeUrl, facebookUrl, instagramUrl } = socialMedia;
   const existArtPlan = await Subscription.count({
     include: [
       {
@@ -34,8 +37,6 @@ const createArtist = async ({
     },
   });
 
-  let avatarUpload;
-
   if (existArtPlan == 0) badRequest("You need to subscripe artist plan");
   const exist = await Artist.findOne({
     where: { userId },
@@ -45,22 +46,30 @@ const createArtist = async ({
   if (exist) {
     alreadyExist("Artist");
   }
-  if (avatarFile) {
-    avatarUpload = await uploadFromBuffer(avatarFile.buffer, "avatars");
-  } else {
-    avatarUpload = null;
-  }
+
+  const [avatarUpload, bannerUpload] = await Promise.all([
+    avatarFile
+      ? uploadFromBuffer(avatarFile.buffer, "avatars")
+      : Promise.resolve(null),
+    bannerFile
+      ? uploadFromBuffer(bannerFile.buffer, "banner")
+      : Promise.resolve(null),
+  ]);
+
   await Artist.create({
     userId,
     stageName,
     bio,
-    avatarUrl: avatarUpload.public_id,
+    avatarUrl: avatarUpload ? avatarUpload.public_id : null,
+    bannerUrl: bannerUpload ? bannerUpload.public_id : null,
+    youtubeUrl,
+    facebookUrl,
+    instagramUrl,
   });
 };
 
 const getArtists = async ({ page = 1, size = 10 }) => {
   const { limit, offset } = getPagination(page, size);
-
   const data = await Artist.findAndCountAll({
     attributes: ["id", "stageName", "avatarUrl", "verified"],
     limit,
@@ -69,27 +78,39 @@ const getArtists = async ({ page = 1, size = 10 }) => {
   return getPagingData(data, page, limit);
 };
 
-const getArtistByUserId = async (userId) => {
-  return await Artist.findOne({
-    where: { userId },
-  });
-};
-
 const getArtist = async ({ id }) => {
   return await Artist.findByPk(id, {
     include: [
       {
         model: Album,
-        as: "album",
+        as: "albums",
         attributes: ["id", "title", "coverUrl"],
       },
       {
         model: Song,
-        as: "song",
-        attributes: ["id", "coverImage", "isVipOnly", "title"],
+        as: "songs",
+        attributes: [
+          "id",
+          "coverImage",
+          "isVipOnly",
+          "title",
+          "song",
+          "view",
+          "createdAt",
+        ],
       },
     ],
-    attributes: ["id", "stageName", "bio", "avatarUrl", "verified"],
+    attributes: [
+      "id",
+      "stageName",
+      "bio",
+      "avatarUrl",
+      "verified",
+      "bannerUrl",
+      "youtubeUrl",
+      "facebookUrl",
+      "instagramUrl",
+    ],
   });
 };
 
@@ -105,17 +126,34 @@ const myArtist = async ({ userId }) => {
       {
         model: Song,
         as: "song",
-        attributes: ["id", "coverImage", "isVipOnly", "title"],
+        attributes: [
+          "id",
+          "coverImage",
+          "isVipOnly",
+          "title",
+          "song",
+          "view",
+          "createdAt",
+        ],
       },
     ],
-    attributes: ["id", "stageName", "bio", "avatarUrl", "verified"],
+    attributes: [
+      "id",
+      "stageName",
+      "bio",
+      "avatarUrl",
+      "verified",
+      "bannerUrl",
+      "youtubeUrl",
+      "facebookUrl",
+      "instagramUrl",
+    ],
   });
 };
 
 export default {
   createArtist,
   getArtists,
-  getArtistByUserId,
   getArtist,
   myArtist,
 };

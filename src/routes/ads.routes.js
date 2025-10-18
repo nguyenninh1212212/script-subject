@@ -6,6 +6,8 @@ import {
 } from "../middleware/authMiddleware.js";
 import adsService from "../service/adsService.js";
 import { success } from "../model/dto/response.js";
+import { badRequest } from "../middleware/errorHandler.js";
+import upload from "../middleware/multer.js";
 
 const router = express.Router();
 
@@ -36,11 +38,24 @@ router.get(
 router.post(
   "/",
   authenticateToken(true),
-  authenticateToken("admin"),
+  upload.single("adFile"),
+  authenticateToken(["admin"]),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Ads']
-
-    const newAd = await adsService.createAd(req.body);
+    if (!adFile) badRequest("File need");
+    const { type } = req.query;
+    // Các trường còn lại lấy từ req.body
+    const { title, redirectUrl, startDate, endDate, isActive } = req.body;
+    const adFile = req.file;
+    const newAd = await adsService.createAd({
+      title,
+      redirectUrl,
+      startDate,
+      endDate,
+      isActive,
+      type,
+      adFile,
+    });
     success(res, newAd);
   })
 );

@@ -1,12 +1,13 @@
 import { SubscriptionPlan } from "../model/entity/index.js";
+import { alreadyExist } from "../middleware/errorHandler.js";
 
 const createPlan = async ({ name, price, duration, type }) => {
-  return await SubscriptionPlan.create({
-    name,
-    price,
-    duration,
-    type,
+  const [subscriptionPlan, created] = await SubscriptionPlan.findOrCreate({
+    where: { name, type },
+    defaults: { price, duration },
   });
+  if (created) alreadyExist("Plan");
+  return subscriptionPlan;
 };
 
 const getPlans = async () => {
@@ -21,4 +22,17 @@ const TypePlan = async ({ planId }) => {
   return plan.type;
 };
 
-export default { createPlan, getPlans, TypePlan };
+const updatePlan = async ({ id, name, price, duration, type }) => {
+  const plan = await SubscriptionPlan.findByPk(id);
+  if (!plan) throw new Error(`Plan with id ${id} not found`);
+
+  const data = { name, price, duration, type };
+
+  Object.keys(data).forEach((key) => data[key] == null && delete data[key]);
+
+  await plan.update(data);
+
+  return plan;
+};
+
+export default { createPlan, getPlans, TypePlan, updatePlan };

@@ -29,9 +29,6 @@ export const authenticateToken =
 export const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) throw unauthorized("Unauthorized");
-
-    console.log(req.user.roles, allowedRoles);
-
     if (!req.user.roles.some((role) => allowedRoles.includes(role))) {
       throw forbidden();
     }

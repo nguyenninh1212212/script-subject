@@ -22,6 +22,21 @@ export default (sequelize, DataTypes) => {
       avatarUrl: {
         type: DataTypes.STRING,
       },
+      bannerUrl: {
+        type: DataTypes.STRING,
+      },
+      facebookUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      youtubeUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      instagramUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       verified: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

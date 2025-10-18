@@ -35,4 +35,20 @@ router.post(
   })
 );
 
+router.patch(
+  "/",
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Subscription plan']
+    const { name, price, duration, type } = req.body;
+    const sub = await PlanService.createPlan({
+      name,
+      price,
+      duration,
+      type,
+    });
+    success(res, sub, 200);
+  })
+);
 export default router;

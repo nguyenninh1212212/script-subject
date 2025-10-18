@@ -1,9 +1,31 @@
 import { Ads } from "../model/entity/index.js";
 import { Op } from "sequelize";
+import { uploadFromBuffer, deleteFromCloudinary } from "../util/cloudinary.js";
 
 const adsService = {
   // Admin thêm quảng cáo mới
-  async createAd(data) {
+  async createAd({
+    title,
+    redirectUrl,
+    startDate,
+    endDate,
+    isActive,
+    type,
+    adFile,
+  }) {
+    const mediaUrl = await uploadFromBuffer(adFile.buffer, "ads");
+    if (!["BANNER", "AUDIO", "VIDEO"].includes(type)) {
+      return res.status(400).json({ message: "type không hợp lệ" });
+    }
+    const data = {
+      title,
+      redirectUrl,
+      startDate,
+      endDate,
+      isActive,
+      type,
+      mediaUrl,
+    };
     return Ads.create(data);
   },
 

@@ -7,3 +7,4 @@ coverage/
 # swagger-output.json
 .DS_Store
 test/
+docker-compose.yaml

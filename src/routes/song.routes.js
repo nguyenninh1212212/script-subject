@@ -138,10 +138,7 @@ router.patch(
   upload.single("coverFile"),
   authenticateToken(true),
   asyncHandler(async (req, res) => {
-    // #swagger.start
-    /* // Sẽ cập nhật Swagger ở bước 3
-     */
-    // #swagger.end
+    // #swagger.tags = ['Song']
 
     const userId = req.user.sub;
     const { id } = req.params;
@@ -171,6 +168,7 @@ router.post(
   "/favorite/:songId",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
     const userId = req.user.sub;
     const { songId } = req.params;
     await songService.addToFavoutite({ userId, songId });
@@ -181,6 +179,7 @@ router.get(
   "/favorite",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
     const { page = 1, size = 10 } = req.query;
     const userId = req.user.sub;
     const favourites = await songService.getFavourite({ userId }, page, size);
@@ -191,7 +190,8 @@ router.delete(
   "/favorite",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
-    const userId = req.user.sub;
+    // #swagger.tags = ['Song']
+
     const { songId } = req.params;
     await songService.deleteFavourite({ id, songId });
     message(res, "success");
