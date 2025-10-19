@@ -24,12 +24,15 @@ const home = async (req, res) => {
   ]);
 
   // Gói tất cả dữ liệu vào một object và gửi về
-  success(res, {
-    artists,
-    songs,
-    albums,
-    playlists,
-  });
+  return (
+    res,
+    {
+      artists,
+      songs,
+      albums,
+      playlists,
+    }
+  );
 };
 
 export default { home };

@@ -3,15 +3,21 @@ import { notFound, badRequest } from "../middleware/errorHandler.js";
 import subscriptionService from "../service/subscriptionService.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import adsService from "./adsService.js";
-import { uploadFromBuffer, deleteFromCloudinary } from "../util/cloudinary.js";
+import {
+  uploadFromBuffer,
+  deleteFromCloudinary,
+  getUrlCloudinary,
+} from "../util/cloudinary.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { Op } from "sequelize";
+import sequelize from "sequelize";
 
 const createSong = async ({ title, userId, songFile, coverFile, duration }) => {
   const artistId = await Artist.findOne({
     where: { userId },
     arttibutes: ["id"],
   });
+
   if (!artistId) notFound("Artist profile not found");
 
   const [songUpload, coverUpload] = await Promise.all([
@@ -28,11 +34,24 @@ const createSong = async ({ title, userId, songFile, coverFile, duration }) => {
   });
 };
 
-const getSongs = async ({ page, size }) => {
+const getSongs = async ({ page, size, userId }) => {
   const { limit, offset } = getPagination(page, size);
 
   const data = await Song.findAndCountAll({
-    attributes: ["id", "title", "isVipOnly", "coverImage"],
+    attributes: [
+      "id",
+      "title",
+      "coverImage",
+      "isVipOnly",
+      [
+        sequelize.literal(`EXISTS (
+          SELECT 1 
+          FROM "FavoriteSong" fs 
+          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = '${userId}'
+        )`),
+        "isFavourite",
+      ],
+    ],
     include: [
       {
         model: Artist,
@@ -43,7 +62,20 @@ const getSongs = async ({ page, size }) => {
     limit,
     offset,
   });
-  return getPagingData(data, page, limit);
+
+  const songs = await Promise.all(
+    data.rows.map(async (songInstance) => {
+      const song = songInstance.toJSON(); // convert Sequelize instance to plain object
+      return {
+        ...song,
+        coverImage: song.coverImage
+          ? await getUrlCloudinary(song.coverImage)
+          : null,
+      };
+    })
+  );
+
+  return getPagingData({ count: data.count, rows: songs }, page, limit);
 };
 
 const getSong = async ({ userId, id }) => {
@@ -71,18 +103,22 @@ const getSong = async ({ userId, id }) => {
     type: subscriptionType.USER,
   });
   await Song.increment("view", { by: 1, where: id });
+  const songWithUrl = {
+    ...song.toJSON(),
+    song: getUrlCloudinary(song.song),
+    coverImage: getUrlCloudinary(song.coverImage), // nếu muốn luôn convert cover
+  };
 
   if (isSubscription) {
-    return { song: song, ads: null };
+    return { song: songWithUrl, ads: null };
   }
 
   const ads = await adsService.getRandomAd();
-
   if (ads && ads.type === "AUDIO") {
-    return { song, ads };
+    return { song: songWithUrl, ads };
   }
 
-  return { song, ads: null };
+  return { song: songWithUrl, ads: null };
 };
 
 const removeSong = async ({ userId, songId }) => {
@@ -99,6 +135,11 @@ const removeSong = async ({ userId, songId }) => {
 };
 
 const deleteSong = async (songId) => {
+  const song = Song.findByPk(songId);
+  await Promise.all([
+    await deleteFromCloudinary(song.coverImage),
+    await deleteFromCloudinary(song.song),
+  ]);
   await Song.destroy({
     where: { id: songId },
   });
@@ -157,11 +198,13 @@ const updateSong = async ({ id, userId, data, coverFile }) => {
   return song;
 };
 const addToFavoutite = async ({ userId, songId }) => {
-  const user = User.findByPk(userId);
-  const song = Song.findByPk(songId);
+  const [user, song] = await Promise.all([
+    await User.findByPk(userId),
+    await Song.findByPk(songId),
+  ]);
   if (!user) badRequest("User not existing");
   if (!song) badRequest("Song not exist");
-  await user.addFavoriteSong(song);
+  await user.addFavoriteSongs(song);
 };
 
 const getFavourite = async ({ userId }, page, size) => {

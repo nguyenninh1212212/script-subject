@@ -8,22 +8,26 @@ dotenv.config();
 export const authenticateToken =
   (require = true) =>
   (req, res, next) => {
-    const header = req.headers["authorization"];
-    const token = header && header.split(" ")[1];
+    try {
+      const header = req.headers["authorization"];
+      const token = header?.split(" ")[1];
 
-    if (!token) {
-      if (require) throw unauthorized("Unauthorized");
-      return next();
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        if (require) throw forbidden("Forbidden");
+      if (!token) {
+        if (require) return res.status(401).json({ message: "Unauthorized" });
         return next();
       }
-      req.user = AESDecrypt(user.data);
-      next();
-    });
+
+      jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+          if (require) return res.status(403).json({ message: "Forbidden" });
+          return next();
+        }
+        req.user = AESDecrypt(user.data);
+        next();
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
 export const authorizeRoles = (...allowedRoles) => {

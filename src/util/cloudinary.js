@@ -34,5 +34,12 @@ const deleteFromCloudinary = async (publicId) => {
   }
 };
 
+const getUrlCloudinary = async (public_id) => {
+  try {
+    return client.url(public_id, { secure: true });
+  } catch (error) {
+    badRequest(error);
+  }
+};
 // Export các hàm để có thể sử dụng ở nơi khác
-export { uploadFromBuffer, deleteFromCloudinary };
+export { uploadFromBuffer, deleteFromCloudinary, getUrlCloudinary };

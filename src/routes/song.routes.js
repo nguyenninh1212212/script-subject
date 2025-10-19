@@ -79,11 +79,12 @@ router.post(
 
 router.get(
   "/",
-
+  authenticateToken(false),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
+    const userId = req.user ? req.user.sub : null;
     const { page = 1, size = 10 } = req.query;
-    const songs = await songService.getSongs({ page, size });
+    const songs = await songService.getSongs({ page, size, userId });
     success(res, songs);
   })
 );

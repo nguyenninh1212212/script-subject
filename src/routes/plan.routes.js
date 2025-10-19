@@ -41,7 +41,8 @@ router.patch(
   authorizeRoles("admin"),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Subscription plan']
-    const { name, price, duration, type } = req.body;
+    const { type } = req.query;
+    const { name, price, duration } = req.body;
     const sub = await PlanService.createPlan({
       name,
       price,
