@@ -41,5 +41,4 @@ const getUrlCloudinary = async (public_id) => {
     badRequest(error);
   }
 };
-// Export các hàm để có thể sử dụng ở nơi khác
 export { uploadFromBuffer, deleteFromCloudinary, getUrlCloudinary };

@@ -19,8 +19,11 @@ const doc = {
     { name: "Artist", description: "Quản lý nghệ sĩ" },
     { name: "Song", description: "Quản lý bài hát" },
     { name: "Playlist", description: "Quản lý playlist" },
+    { name: "Album", description: "" },
     { name: "Payment", description: "Thanh toán và gói dịch vụ" },
     { name: "Ads", description: "Quảng cáo" },
+    { name: "Subscription", description: "" },
+    { name: "Subscription plan", description: "" },
   ],
   securityDefinitions: {
     bearerAuth: {

@@ -8,6 +8,7 @@ export default (sequelize, DataTypes) => {
         primaryKey: true,
       },
       name: { type: DataTypes.STRING, allowNull: false },
+      coverUrl: { type: DataTypes.STRING, allowNull: true },
       description: { type: DataTypes.TEXT },
     },
     {

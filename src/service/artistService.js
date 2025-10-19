@@ -6,9 +6,14 @@ import {
   Song,
 } from "../model/entity/index.js";
 import subscriptionType from "../enum/subscriptionType.js";
-import { alreadyExist, badRequest } from "../middleware/errorHandler.js";
+import {
+  alreadyExist,
+  badRequest,
+  notFound,
+} from "../middleware/errorHandler.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { uploadFromBuffer } from "../util/cloudinary.js";
+import sequelize from "sequelize";
 
 const createArtist = async ({
   userId,
@@ -78,8 +83,8 @@ const getArtists = async ({ page = 1, size = 10 }) => {
   return getPagingData(data, page, limit);
 };
 
-const getArtist = async ({ id }) => {
-  return await Artist.findByPk(id, {
+const getArtist = async ({ id, userId }) => {
+  const artist = await Artist.findByPk(id, {
     include: [
       {
         model: Album,
@@ -100,32 +105,48 @@ const getArtist = async ({ id }) => {
         ],
       },
     ],
-    attributes: [
-      "id",
-      "stageName",
-      "bio",
-      "avatarUrl",
-      "verified",
-      "bannerUrl",
-      "youtubeUrl",
-      "facebookUrl",
-      "instagramUrl",
-    ],
+    attributes: {
+      include: [
+        "id",
+        "stageName",
+        "bio",
+        "avatarUrl",
+        "verified",
+        "bannerUrl",
+        "youtubeUrl",
+        "facebookUrl",
+        "instagramUrl",
+        [
+          sequelize.literal(
+            `(EXISTS (
+              SELECT 1 FROM "Follower" fs 
+              WHERE fs."ArtistId" = :artistId 
+                AND fs."UserId" = :userId
+            ))`
+          ),
+          "isFollow",
+        ],
+      ],
+    },
+    replacements: { artistId: id, userId }, // bind parameters
   });
+
+  if (!artist) throw new Error("Artist not found");
+  return artist;
 };
 
-const myArtist = async ({ userId }) => {
+const myArtist = async (userId) => {
   return await Artist.findOne({
-    where: { userId },
+    where: { userId: userId },
     include: [
       {
         model: Album,
-        as: "album",
+        as: "albums", // phải trùng với tên association
         attributes: ["id", "title", "coverUrl"],
       },
       {
         model: Song,
-        as: "song",
+        as: "songs", // phải trùng với tên association
         attributes: [
           "id",
           "coverImage",
@@ -151,8 +172,43 @@ const myArtist = async ({ userId }) => {
   });
 };
 
+const updateArtist = async ({
+  userId,
+  stageName,
+  bio,
+  avatarFile,
+  bannerFile,
+  socialMedia,
+}) => {
+  // Lấy artist hiện tại
+  const artist = await Artist.findOne({ where: { userId } });
+  if (!artist) notFound("Artist not found");
+
+  const [avatarUpload, bannerUpload] = await Promise.all([
+    avatarFile
+      ? uploadFromBuffer(avatarFile.buffer, "avatars")
+      : Promise.resolve(null),
+    bannerFile
+      ? uploadFromBuffer(bannerFile.buffer, "banner")
+      : Promise.resolve(null),
+  ]);
+
+  await artist.update({
+    stageName: stageName ?? artist.stageName,
+    bio: bio ?? artist.bio,
+    avatarUrl: avatarUpload ? avatarUpload.public_id : artist.avatarUrl,
+    bannerUrl: bannerUpload ? bannerUpload.public_id : artist.bannerUrl,
+    youtubeUrl: socialMedia?.youtubeUrl ?? artist.youtubeUrl,
+    facebookUrl: socialMedia?.facebookUrl ?? artist.facebookUrl,
+    instagramUrl: socialMedia?.instagramUrl ?? artist.instagramUrl,
+  });
+
+  return artist;
+};
+
 export default {
   createArtist,
+  updateArtist,
   getArtists,
   getArtist,
   myArtist,

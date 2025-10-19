@@ -1,5 +1,9 @@
 import { Playlist, Song, User } from "../model/entity/index.js";
-import { notFound, badRequest } from "../middleware/errorHandler.js";
+import {
+  notFound,
+  badRequest,
+  alreadyExist,
+} from "../middleware/errorHandler.js";
 
 const createPlaylist = async ({ name, userId }) => {
   return await Playlist.create({ name, userId });
@@ -10,8 +14,9 @@ const addSongToPlaylist = async (playlistId, songId) => {
   if (!playlist) throw notFound("Playlist not found");
   const song = await Song.findByPk(songId);
   if (!song) throw notFound("Song not found");
-
-  await playlist.addSong(song);
+  const exist = await playlist.getSongs(song);
+  if (exist) alreadyExist("Song");
+  await playlist.addSongs(song);
   return playlist;
 };
 
@@ -40,13 +45,12 @@ const getPlaylistById = async (id) => {
   });
 };
 
-const removeSongFromPlaylist = async (playlistId, songId) => {
-  const playlist = await Playlist.findByPk(playlistId, {
-    include: { model: Song, as: "songs" },
-  });
+const removeSongFromPlaylist = async ({ playlistId, songId }) => {
+  const playlist = await Playlist.findByPk(playlistId);
+  if (!playlist) notFound("Playlist");
   const song = await Song.findByPk(songId);
-  await playlist.removeSong(song);
-  return playlist;
+  if (!song) notFound("Song");
+  await playlist.removeSongs(song);
 };
 
 const removeBatchSongFromPlaylist = async (playlistId, songIds) => {

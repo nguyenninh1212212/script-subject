@@ -1,15 +1,18 @@
 import { User, Artist } from "../model/entity/index.js";
-import { notFound } from "../middleware/errorHandler.js";
+import { alreadyExist, notFound } from "../middleware/errorHandler.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 
 const follow = async ({ userId, artistId }) => {
   const user = await User.findByPk(userId);
   if (!user) notFound("User");
-
   const artist = await Artist.findByPk(artistId);
   if (!artist) notFound("Artist");
-
-  await user.addFollowedArtist(artist);
+  if (artist.userId === userId) {
+    badRequest("You cannot follow yourself");
+  }
+  (await user.getFollowedArtist(artist))
+    ? alreadyExist("Follow")
+    : await user.addFollowedArtist(artist);
 };
 
 const unFollow = async ({ userId, artistId }) => {

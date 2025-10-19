@@ -61,11 +61,13 @@ router.delete(
 );
 
 router.delete(
-  "/:playlistId/songs/:songId",
+  "/:playlistId/songs",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Playlist']
-    await playlistService.deletePlaylist(req.params.id);
+    const { songId } = req.query;
+    const { playlistId } = req.params;
+    await playlistService.deletePlaylist({ songId, playlistId });
     success(res, "Delete playlist success", 204);
   })
 );

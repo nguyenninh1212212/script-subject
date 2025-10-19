@@ -34,6 +34,16 @@ router.post(
     message(res, "Register success", 201);
   })
 );
+router.put(
+  "/register",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['User']
+    const { name } = req.body;
+    const userId = req.user.sub;
+    await userService.changeName({ name, userId });
+    message(res, "success", 205);
+  })
+);
 router.get(
   "/refresh",
   asyncHandler(async (req, res) => {

@@ -91,6 +91,13 @@ const login = async ({ username, password }) => {
   return { token, refreshToken };
 };
 
+const changeName = async ({ name, userId }) => {
+  const user = await User.findByPk(userId);
+  if (!user) notFound("User");
+  user.name = name;
+  await user.update();
+};
+
 const getUsers = async () => {
   return await User.findAll({ include: ["roles", "subscription"] });
 };
@@ -221,4 +228,5 @@ export default {
   logout,
   googleLogin,
   refreshToken,
+  changeName,
 };

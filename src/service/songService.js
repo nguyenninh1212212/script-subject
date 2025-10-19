@@ -1,5 +1,9 @@
 import { Song, Album, Artist, User } from "../model/entity/index.js";
-import { notFound, badRequest } from "../middleware/errorHandler.js";
+import {
+  notFound,
+  badRequest,
+  alreadyExist,
+} from "../middleware/errorHandler.js";
 import subscriptionService from "../service/subscriptionService.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import adsService from "./adsService.js";
@@ -8,11 +12,12 @@ import {
   deleteFromCloudinary,
   getUrlCloudinary,
 } from "../util/cloudinary.js";
+import { getAudioDurationFromBuffer } from "../util/getAudioDuration.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { Op } from "sequelize";
 import sequelize from "sequelize";
 
-const createSong = async ({ title, userId, songFile, coverFile, duration }) => {
+const createSong = async ({ title, userId, songFile, coverFile }) => {
   const artistId = await Artist.findOne({
     where: { userId },
     arttibutes: ["id"],
@@ -20,9 +25,10 @@ const createSong = async ({ title, userId, songFile, coverFile, duration }) => {
 
   if (!artistId) notFound("Artist profile not found");
 
-  const [songUpload, coverUpload] = await Promise.all([
+  const [songUpload, coverUpload, duration] = await Promise.all([
     uploadFromBuffer(songFile.buffer, "songs"),
     uploadFromBuffer(coverFile.buffer, "coverImages"),
+    getAudioDurationFromBuffer(songFile.buffer, songFile.mimetype),
   ]);
 
   return await Song.create({
@@ -38,25 +44,12 @@ const getSongs = async ({ page, size, userId }) => {
   const { limit, offset } = getPagination(page, size);
 
   const data = await Song.findAndCountAll({
-    attributes: [
-      "id",
-      "title",
-      "coverImage",
-      "isVipOnly",
-      [
-        sequelize.literal(`EXISTS (
-          SELECT 1 
-          FROM "FavoriteSong" fs 
-          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = '${userId}'
-        )`),
-        "isFavourite",
-      ],
-    ],
+    attributes: ["id", "title", "coverImage", "duration"],
     include: [
       {
         model: Artist,
         as: "artist",
-        attributes: ["id", "stageName", "avatarUrl"],
+        attributes: ["stageName"],
       },
     ],
     limit,
@@ -65,7 +58,7 @@ const getSongs = async ({ page, size, userId }) => {
 
   const songs = await Promise.all(
     data.rows.map(async (songInstance) => {
-      const song = songInstance.toJSON(); // convert Sequelize instance to plain object
+      const song = songInstance.toJSON();
       return {
         ...song,
         coverImage: song.coverImage
@@ -92,7 +85,22 @@ const getSong = async ({ userId, id }) => {
         attributes: ["id", "stageName", "avatarUrl"],
       },
     ],
-    attributes: ["id", "title", "song", "coverImage", "isVipOnly", "createdAt"],
+    attributes: [
+      "id",
+      "title",
+      "song",
+      "coverImage",
+      "isVipOnly",
+      "createdAt",
+      [
+        sequelize.literal(`EXISTS (
+          SELECT 1 
+          FROM "FavoriteSong" fs 
+          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = '${userId}'
+        )`),
+        "isFavourite",
+      ],
+    ],
   });
   if (!song) {
     return null;
@@ -202,6 +210,8 @@ const addToFavoutite = async ({ userId, songId }) => {
     await User.findByPk(userId),
     await Song.findByPk(songId),
   ]);
+  const exist = await user.getFavoriteSongs(song);
+  if (exist) alreadyExist("Song");
   if (!user) badRequest("User not existing");
   if (!song) badRequest("Song not exist");
   await user.addFavoriteSongs(song);

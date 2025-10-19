@@ -1,38 +1,83 @@
 import { Artist, Album, Playlist, Song } from "../model/entity/index.js";
+import sequelize from "sequelize";
+import { getUrlCloudinary } from "../util/cloudinary.js";
 
 const home = async (req, res) => {
-  // Thực thi 4 truy vấn song song để tăng hiệu suất
-  const [artists, songs, albums, playlists] = await Promise.all([
+  const [artistsP, albumsP] = await Promise.all([
+    // 🔹 Lấy top 6 artist có nhiều follower nhất
     Artist.findAll({
       limit: 6,
-      order: [["createdAt", "DESC"]],
-      attributes: ["id", "stageName", "avatarUrl", "verified"],
+      attributes: [
+        "id",
+        "stageName",
+        "avatarUrl",
+        "verified",
+        [
+          sequelize.literal(`
+              (
+                SELECT COUNT(*) 
+                FROM "Follower" fs
+                WHERE fs."ArtistId" = "Artist"."id"
+              )
+            `),
+          "followerCount",
+        ],
+      ],
+      order: [
+        [
+          sequelize.literal(`
+              (
+                SELECT COUNT(*) 
+                FROM "Follower" fs
+                WHERE fs."ArtistId" = "Artist"."id"
+              )
+            `),
+          "DESC",
+        ],
+      ],
     }),
-    Song.findAll({
-      limit: 10,
-      order: [["createdAt", "DESC"]], // Lấy 10 bài hát mới nhất
-      attributes: ["id", "title", "isVipOnly", "coverImage"],
-    }),
+
+    // 🔹 Lấy 8 album mới nhất
     Album.findAll({
       limit: 8,
-      order: [["createdAt", "DESC"]], // Lấy 8 album mới nhất
+      order: [["createdAt", "DESC"]],
+      include: { model: Artist, as: "artist", attributes: ["stageName"] },
+      attributes: ["id", "title", "coverUrl"],
     }),
-    Playlist.findAll({
-      limit: 9,
-      order: [["createdAt", "DESC"]], // Lấy 9 playlist mới nhất
-    }),
+
+    // 🔹 Lấy 9 playlist mới nhất
   ]);
 
-  // Gói tất cả dữ liệu vào một object và gửi về
-  return (
-    res,
-    {
-      artists,
-      songs,
-      albums,
-      playlists,
-    }
+  // Chuyển ảnh Cloudinary
+  const artists = await Promise.all(
+    artistsP.map(async (artist) => {
+      if (!artist) return null;
+      const json = artist.toJSON();
+      return {
+        ...json,
+        avatarUrl: json.avatarUrl
+          ? await getUrlCloudinary(json.avatarUrl)
+          : null,
+      };
+    })
   );
+
+  const albums = await Promise.all(
+    albumsP.map(async (album) => {
+      if (!album) return null;
+      const json = album.toJSON();
+      return {
+        ...json,
+        coverUrl: json.coverUrl ? await getUrlCloudinary(json.coverUrl) : null,
+      };
+    })
+  );
+
+  // ✅ Gửi về client
+  return {
+    artists: artists.filter(Boolean),
+    albums: albums.filter(Boolean),
+  };
 };
 
 export default { home };

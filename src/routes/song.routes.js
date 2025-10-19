@@ -53,7 +53,7 @@ router.post(
     }
 */
     // #endregion
-    const { title, duration } = req.body;
+    const { title } = req.body;
 
     const files = req.files;
     if (!files || !files.songFile || !files.coverFile) {
@@ -70,7 +70,6 @@ router.post(
       userId,
       songFile,
       coverFile,
-      duration,
     });
 
     success(res, song, 201);
