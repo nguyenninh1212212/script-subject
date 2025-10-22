@@ -87,6 +87,7 @@ router.get(
     success(res, songs);
   })
 );
+
 router.get(
   "/artist/:artistId",
   authenticateToken(false),

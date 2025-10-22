@@ -31,12 +31,12 @@ export const authenticateToken =
   };
 
 export const authorizeRoles = (...allowedRoles) => {
+  console.log("🚀 ~ authorizeRoles ~ allowedRoles:", allowedRoles);
   return (req, res, next) => {
     if (!req.user) throw unauthorized("Unauthorized");
     if (!req.user.roles.some((role) => allowedRoles.includes(role))) {
       throw forbidden();
     }
-
     next();
   };
 };

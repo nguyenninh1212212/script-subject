@@ -11,18 +11,46 @@ import upload from "../middleware/multer.js";
 
 const router = express.Router();
 
-// [GET] /ads/random -> client gọi khi cần hiển thị quảng cáo
+router.post(
+  "/",
+  upload.single("mediaFile"),
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Ads']
+    const mediaFile = req.file;
+    console.log("=== TEST UPLOAD ROUTE ===");
+    console.log("content-type:", req.headers["content-type"]);
+    console.log("is multipart?:", req.is("multipart/form-data"));
+    console.log("file:", !!req.file);
+    if (!mediaFile) badRequest("File need");
+
+    const { type } = req.query;
+
+    const { title, redirectUrl, startDate, endDate, isActive } = req.body;
+
+    const newAd = await adsService.createAd({
+      title,
+      redirectUrl,
+      startDate,
+      endDate,
+      isActive,
+      type,
+      adFile: mediaFile,
+    });
+    success(res, newAd);
+  })
+);
+
 router.get(
   "/random",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Ads']
-
     const ad = await adsService.getRandomAd();
     success(res, ad || { message: "No active ads available" });
   })
 );
 
-// [GET] /ads -> admin xem danh sách quảng cáo
 router.get(
   "/",
   authenticateToken(true),
@@ -35,28 +63,15 @@ router.get(
   })
 );
 
-router.post(
-  "/",
+router.delete(
+  "/:id",
   authenticateToken(true),
-  upload.single("adFile"),
-  authenticateToken(["admin"]),
+  authenticateToken("admin"),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Ads']
-    if (!adFile) badRequest("File need");
-    const { type } = req.query;
-    // Các trường còn lại lấy từ req.body
-    const { title, redirectUrl, startDate, endDate, isActive } = req.body;
-    const adFile = req.file;
-    const newAd = await adsService.createAd({
-      title,
-      redirectUrl,
-      startDate,
-      endDate,
-      isActive,
-      type,
-      adFile,
-    });
-    success(res, newAd);
+    const { id } = req.params;
+    const ads = await adsService.deletAds({ id });
+    success(res, ads);
   })
 );
 

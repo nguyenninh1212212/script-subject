@@ -5,11 +5,11 @@ const storage = multer.memoryStorage();
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
-  "image/gif",
   "image/webp",
   "audio/mpeg",
   "audio/wav",
   "audio/ogg",
+  "application/octet-stream",
 ];
 const fileFilter = (req, file, cb) => {
   if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
