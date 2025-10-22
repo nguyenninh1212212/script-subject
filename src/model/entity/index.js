@@ -12,6 +12,7 @@ import SongFactory from "./song.js";
 import PlaylistFactory from "./playlist.js";
 import SubscriptionPlanFactory from "./subscriptionPlan.js";
 import AdsFactory from "./ads.js";
+import MouthlySongViewFactory from "./mouthlySongView.js";
 
 // =======================
 // Khởi tạo Models
@@ -25,6 +26,7 @@ const Album = AlbumFactory(sequelize, Sequelize.DataTypes);
 const Song = SongFactory(sequelize, Sequelize.DataTypes);
 const Playlist = PlaylistFactory(sequelize, Sequelize.DataTypes);
 const Ads = AdsFactory(sequelize, Sequelize.DataTypes);
+const MouthlySongView = MouthlySongViewFactory(sequelize, Sequelize.DataTypes);
 const SubscriptionPlan = SubscriptionPlanFactory(
   sequelize,
   Sequelize.DataTypes
@@ -66,6 +68,19 @@ Payment.belongsTo(User, { foreignKey: "userId", as: "user" });
 // =======================
 User.hasOne(Artist, { foreignKey: "userId", as: "artist" });
 Artist.belongsTo(User, { foreignKey: "userId", as: "owner" });
+// =======================
+// Quan hệ mounthLy <-> Artist (1-1)
+// =======================
+// Artist.js
+Artist.hasMany(MouthlySongView, {
+  foreignKey: "artistId",
+  as: "monthlyViews", // alias rõ nghĩa
+});
+
+MouthlySongView.belongsTo(Artist, {
+  foreignKey: "artistId",
+  as: "artist", // alias ngắn gọn, dễ join
+});
 
 // =======================
 // Quan hệ Artist <-> Album (1-N)
@@ -102,6 +117,7 @@ Song.belongsToMany(Playlist, { through: "PlaylistSong", as: "playlists" });
 // =======================
 User.belongsToMany(Song, { through: "FavoriteSong", as: "favoriteSongs" });
 Song.belongsToMany(User, { through: "FavoriteSong", as: "likedByUsers" });
+
 // =======================
 // Follower (User <-> Artist) (N-N)
 // =======================
@@ -129,4 +145,5 @@ export {
   Song,
   Playlist,
   Ads,
+  MouthlySongView,
 };

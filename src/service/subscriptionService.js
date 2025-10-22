@@ -51,6 +51,7 @@ const checkActiveSubscription = async ({ subscriptionId }) => {
 };
 
 const checkSubscription = async ({ userId, type, status = "ACTIVE" }) => {
+  if (!userId) return false;
   const subscription = await Subscription.findOne({
     where: { userId, status },
     include: {

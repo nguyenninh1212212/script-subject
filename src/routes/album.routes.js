@@ -78,9 +78,40 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Album']
     const userId = req.user.sub;
-    const { id } = req.params;
     const { songId } = req.query;
     const albums = await albumService.deleteSongAlbum({ id, songId, userId });
+    success(res, albums);
+  })
+);
+router.post(
+  "/farvorite/:id",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Album']
+    const userId = req.user.sub;
+    const { id } = req.params;
+    const albums = await albumService.addFavoriteAlbum({ id, userId });
+    success(res, albums);
+  })
+);
+router.delete(
+  "/farvorite/:id",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Album']
+    const userId = req.user.sub;
+    const { id } = req.params;
+    const albums = await albumService.removeFavoriteAlbum({ id, userId });
+    success(res, albums);
+  })
+);
+router.get(
+  "/farvorite",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Album']
+    const userId = req.user.sub;
+    const albums = await albumService.getFavoriteAlbum({ userId });
     success(res, albums);
   })
 );

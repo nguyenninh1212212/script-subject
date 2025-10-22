@@ -4,6 +4,9 @@ import {
   badRequest,
   alreadyExist,
 } from "../middleware/errorHandler.js";
+import { where } from "sequelize";
+import { transformPropertyInList } from "../util/help.js";
+import { getUrlCloudinary } from "../util/cloudinary.js";
 
 const createPlaylist = async ({ name, userId }) => {
   return await Playlist.create({ name, userId });
@@ -21,28 +24,62 @@ const addSongToPlaylist = async (playlistId, songId) => {
 };
 
 const getPlaylistsByUser = async (userId) => {
-  return await Playlist.findAll({
+  const playlists = await Playlist.findAll({
     where: { userId },
+    include: {
+      model: Song,
+      as: "songs",
+      attributes: ["id", "coverImage"],
+      limit: 4,
+    },
+    raw: false,
   });
+
+  const plJson = playlists.map((pl) => pl.toJSON());
+
+  const newPlaylists = await Promise.all(
+    plJson.map(async (pl) => {
+      const transformedSongs = await transformPropertyInList(
+        pl.songs || [],
+        ["coverImage"],
+        getUrlCloudinary
+      );
+
+      return {
+        ...pl,
+        songs: transformedSongs,
+      };
+    })
+  );
+
+  return newPlaylists;
 };
 
 const getPlaylistById = async (id) => {
-  return await Playlist.findByPk(id, {
+  const playlist = await Playlist.findByPk(id, {
     include: [
       {
         model: Song,
         as: "songs",
-        attribute: [
-          "id",
-          "title",
-          "song",
-          "coverImage",
-          "isVipOnly",
-          "albumId",
-        ],
+        attributes: ["id", "title", "song", "coverImage", "isVipOnly"],
       },
     ],
   });
+
+  if (!playlist) return null;
+
+  const plJson = playlist.toJSON();
+
+  const transformedSongs = await transformPropertyInList(
+    plJson.songs || [],
+    ["song", "coverImage"],
+    getUrlCloudinary
+  );
+
+  return {
+    ...plJson,
+    songs: transformedSongs,
+  };
 };
 
 const removeSongFromPlaylist = async ({ playlistId, songId }) => {

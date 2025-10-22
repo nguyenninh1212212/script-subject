@@ -3,7 +3,7 @@ import { parseBuffer } from "music-metadata";
 const getAudioDurationFromBuffer = async (buffer, mimeType) => {
   try {
     const metadata = await parseBuffer(buffer, mimeType);
-    const duration = metadata.format.duration; // thời lượng (giây)
+    const duration = Math.round(metadata.format.duration);
     console.log("⏱ Duration:", duration, "seconds");
     return duration;
   } catch (err) {

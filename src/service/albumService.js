@@ -1,5 +1,5 @@
 import { where } from "sequelize";
-import { Album, Artist, Song } from "../model/entity/index.js";
+import { Album, Artist, Song, User } from "../model/entity/index.js";
 import {
   badRequest,
   notFound,
@@ -7,6 +7,8 @@ import {
 } from "../middleware/errorHandler.js";
 import { uploadFromBuffer } from "../util/cloudinary.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
+import { getUrlCloudinary } from "../util/cloudinary.js";
+import { transformPropertyInList } from "../util/help.js";
 
 const createAlbum = async ({ title, userId, coverFile }) => {
   const artist = await Artist.findOne({
@@ -36,21 +38,42 @@ const getAlbums = async ({ page, size }) => {
       {
         model: Artist,
         as: "artist",
-        attributes: ["id", "stageName", "avatarUrl", "verified"],
+        attributes: ["id", "stageName"],
       },
     ],
+    attributes: ["coverUrl", "createdAt", "id", "title"],
     limit,
     offset,
+    raw: true,
   });
-  return getPagingData(data, page, limit);
+
+  const album = await transformPropertyInList(
+    data.rows,
+    ["coverUrl"],
+    getUrlCloudinary
+  );
+
+  return getPagingData(
+    {
+      count: data.count, // Giữ lại tổng số lượng gốc
+      rows: album.filter(Boolean), // Sử dụng mảng đã biến đổi
+    },
+    page,
+    limit
+  );
 };
 
 const getAlbum = async ({ id }) => {
-  return await Album.findByPk(id, { include: { model: Song, as: "songs" } });
+  const data = await Album.findByPk(id, {
+    include: { model: Song, as: "songs" },
+  });
+
+  const album = data.toJSON();
+  album.coverUrl = data.coverUrl ? await getUrlCloudinary(data.coverUrl) : null;
+  return album;
 };
 
 const addSongToAlbum = async ({ id, songId, userId }) => {
-  console.log("🚀 ~ addSongToAlbum ~ songId:", songId);
   const artist = await Artist.findOne({
     where: { userId: userId },
   });
@@ -76,9 +99,6 @@ const addSongToAlbum = async ({ id, songId, userId }) => {
   }
 
   await song.update({ albumId: album.id });
-
-  // Return the updated song
-  return song;
 };
 
 const deleteAlbum = async ({ id, userId }) => {
@@ -88,14 +108,45 @@ const deleteAlbum = async ({ id, userId }) => {
   await album.destroy();
 };
 
-const deleteSongAlbum = async ({ id, userId, songId }) => {
+const deleteSongAlbum = async ({ userId, songId }) => {
   const artist = await Artist.findOne({ where: { userId: userId } });
-  const album = await artist.getAlbums(id);
   const song = await Song.findOne({ where: { id: songId } });
-  console.log("🚀 ~ deleteSongAlbum ~ song:", song);
   if (song.artistId != artist.id) badRequest("You do not have permission ");
   song.albumId = null;
   await song.save();
+};
+
+const addFavoriteAlbum = async ({ userId, id }) => {
+  const [user, album] = await Promise.all([
+    await User.findByPk(userId),
+    await Album.findByPk(id),
+  ]);
+
+  if (!user) notFound("User not exist");
+  if (!album) notFound("Album not exist");
+
+  await user.addFavoriteAlbums(album);
+};
+const removeFavoriteAlbum = async ({ userId, id }) => {
+  const [user, album] = await Promise.all([
+    await User.findByPk(userId),
+    await Album.findByPk(id),
+  ]);
+  if (!user) notFound("User not exist");
+  if (!album) notFound("Album not exist");
+
+  await user.removeFavoriteAlbums(album);
+};
+const getFavoriteAlbum = async ({ userId }) => {
+  const user = await User.findByPk(userId);
+  if (!user) notFound("User not exist");
+  const data = user.getFavoriteAlbums();
+  const dataJson = data.toJSON();
+  if (data.coverUrl) {
+    dataJson.coverUrl = await getUrlCloudinary(dataJson.coverUrl);
+  }
+
+  return dataJson;
 };
 
 export default {
@@ -105,4 +156,7 @@ export default {
   deleteAlbum,
   getAlbum,
   addSongToAlbum,
+  addFavoriteAlbum,
+  removeFavoriteAlbum,
+  getFavoriteAlbum,
 };

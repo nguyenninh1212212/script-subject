@@ -1,6 +1,7 @@
-import { Artist, Album, Playlist, Song } from "../model/entity/index.js";
+import { Artist, Album } from "../model/entity/index.js";
 import sequelize from "sequelize";
 import { getUrlCloudinary } from "../util/cloudinary.js";
+import { transformPropertyInList } from "../util/help.js";
 
 const home = async (req, res) => {
   const [artistsP, albumsP] = await Promise.all([
@@ -14,66 +15,50 @@ const home = async (req, res) => {
         "verified",
         [
           sequelize.literal(`
-              (
-                SELECT COUNT(*) 
-                FROM "Follower" fs
-                WHERE fs."ArtistId" = "Artist"."id"
-              )
-            `),
+            (
+              SELECT COUNT(*) 
+              FROM "Follower" fs
+              WHERE fs."ArtistId" = "Artist"."id"
+            )
+          `),
           "followerCount",
         ],
       ],
       order: [
         [
           sequelize.literal(`
-              (
-                SELECT COUNT(*) 
-                FROM "Follower" fs
-                WHERE fs."ArtistId" = "Artist"."id"
-              )
-            `),
+            (
+              SELECT COUNT(*) 
+              FROM "Follower" fs
+              WHERE fs."ArtistId" = "Artist"."id"
+            )
+          `),
           "DESC",
         ],
       ],
+      raw: true, // ⚡ thêm dòng này để lấy plain object
     }),
 
     // 🔹 Lấy 8 album mới nhất
     Album.findAll({
       limit: 8,
       order: [["createdAt", "DESC"]],
-      include: { model: Artist, as: "artist", attributes: ["stageName"] },
+      include: {
+        model: Artist,
+        as: "artist",
+        attributes: ["stageName"],
+      },
       attributes: ["id", "title", "coverUrl"],
+      raw: true, // ⚡ trả plain object
+      nest: true, // ⚡ gộp include thành object lồng nhau
     }),
-
-    // 🔹 Lấy 9 playlist mới nhất
   ]);
 
-  // Chuyển ảnh Cloudinary
-  const artists = await Promise.all(
-    artistsP.map(async (artist) => {
-      if (!artist) return null;
-      const json = artist.toJSON();
-      return {
-        ...json,
-        avatarUrl: json.avatarUrl
-          ? await getUrlCloudinary(json.avatarUrl)
-          : null,
-      };
-    })
-  );
+  const [artists, albums] = await Promise.all([
+    transformPropertyInList(artistsP, ["avatarUrl"], getUrlCloudinary),
+    transformPropertyInList(albumsP, ["coverUrl"], getUrlCloudinary),
+  ]);
 
-  const albums = await Promise.all(
-    albumsP.map(async (album) => {
-      if (!album) return null;
-      const json = album.toJSON();
-      return {
-        ...json,
-        coverUrl: json.coverUrl ? await getUrlCloudinary(json.coverUrl) : null,
-      };
-    })
-  );
-
-  // ✅ Gửi về client
   return {
     artists: artists.filter(Boolean),
     albums: albums.filter(Boolean),

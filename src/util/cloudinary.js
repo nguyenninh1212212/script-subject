@@ -35,10 +35,18 @@ const deleteFromCloudinary = async (publicId) => {
 };
 
 const getUrlCloudinary = async (public_id) => {
-  try {
-    return client.url(public_id, { secure: true });
-  } catch (error) {
-    badRequest(error);
-  }
+  if (!public_id) return null;
+
+  const isVideo =
+    public_id.startsWith("songs/") ||
+    public_id.endsWith(".mp4") ||
+    public_id.endsWith(".mp3") ||
+    public_id.endsWith(".mov") ||
+    public_id.endsWith(".webm");
+
+  return client.url(public_id, {
+    secure: true,
+    resource_type: isVideo ? "video" : "image",
+  });
 };
 export { uploadFromBuffer, deleteFromCloudinary, getUrlCloudinary };

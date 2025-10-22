@@ -83,7 +83,24 @@ router.get(
     // #swagger.tags = ['Song']
     const userId = req.user ? req.user.sub : null;
     const { page = 1, size = 10 } = req.query;
-    const songs = await songService.getSongs({ page, size, userId });
+    const songs = await songService.getSongs({ page, size }, userId);
+    success(res, songs);
+  })
+);
+router.get(
+  "/artist/:artistId",
+  authenticateToken(false),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const { artistId } = req.params;
+    const userId = req.user ? req.user.sub : null;
+    const { page = 1, size = 10 } = req.query;
+    const songs = await songService.getSongsByArtist({
+      page,
+      size,
+      artistId,
+    });
+
     success(res, songs);
   })
 );
@@ -92,7 +109,7 @@ router.get(
   authenticateToken(false),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
-    const userId = req.user.sub;
+    const userId = req.user?.sub || null;
     const id = req.params;
     const songs = await songService.getSong({ userId, id });
     success(res, songs);

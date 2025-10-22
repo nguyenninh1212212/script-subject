@@ -4,6 +4,7 @@ import {
   Subscription,
   SubscriptionPlan,
   Song,
+  MouthlySongView,
 } from "../model/entity/index.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import {
@@ -12,7 +13,12 @@ import {
   notFound,
 } from "../middleware/errorHandler.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
-import { uploadFromBuffer } from "../util/cloudinary.js";
+import { transformPropertyInList } from "../util/help.js";
+import {
+  uploadFromBuffer,
+  getUrlCloudinary,
+  deleteFromCloudinary,
+} from "../util/cloudinary.js";
 import sequelize from "sequelize";
 
 const createArtist = async ({
@@ -75,16 +81,142 @@ const createArtist = async ({
 
 const getArtists = async ({ page = 1, size = 10 }) => {
   const { limit, offset } = getPagination(page, size);
+
   const data = await Artist.findAndCountAll({
-    attributes: ["id", "stageName", "avatarUrl", "verified"],
+    attributes: [
+      "id",
+      "stageName",
+      "avatarUrl",
+      "verified",
+      [
+        sequelize.literal(`(
+          SELECT COUNT(*) 
+          FROM "Follower" AS f 
+          WHERE f."ArtistId" = "Artist"."id"
+        )`),
+        "followerCount",
+      ],
+    ],
     limit,
     offset,
+    order: [["createdAt", "DESC"]],
+    raw: true,
   });
-  return getPagingData(data, page, limit);
+
+  const artistsWithAvatar = await transformPropertyInList(
+    data.rows,
+    ["avatarUrl"],
+    getUrlCloudinary
+  );
+  console.log("🚀 ~ getArtists ~ artistsWithAvatar:", artistsWithAvatar);
+
+  return getPagingData(
+    { count: data.count, rows: artistsWithAvatar.filter(Boolean) },
+    page,
+    limit
+  );
 };
 
-const getArtist = async ({ id, userId }) => {
-  const artist = await Artist.findByPk(id, {
+export const getArtist = async ({ id, userId }) => {
+  const artistRaw = await Artist.findByPk(id, {
+    include: [
+      {
+        model: Album,
+        as: "albums",
+        attributes: ["id", "title", "coverUrl"],
+      },
+      {
+        model: Song,
+        as: "songs",
+        attributes: [
+          "id",
+          "coverImage",
+          "title",
+          "song",
+          "view",
+          "createdAt",
+          "duration",
+        ],
+        order: [["view", "DESC"]],
+      },
+    ],
+    attributes: [
+      "id",
+      "stageName",
+      "bio",
+      "avatarUrl",
+      "verified",
+      "bannerUrl",
+      "youtubeUrl",
+      "facebookUrl",
+      "instagramUrl",
+      [
+        sequelize.literal(
+          `(EXISTS (
+             SELECT 1 FROM "Follower" fs 
+             WHERE fs."ArtistId" = "Artist"."id" -- Refer to Artist's id
+               AND fs."UserId" = :userId
+           ))`
+        ),
+        "isFollow", // Alias for the subquery result
+      ],
+
+      [
+        sequelize.literal(`(
+          SELECT COUNT(*) 
+          FROM "Follower" AS f 
+          WHERE f."ArtistId" = "Artist"."id"
+        )`),
+        "followerCount",
+      ],
+    ],
+    replacements: { userId },
+    raw: false,
+    nest: true,
+  });
+
+  // 2. Check if artist exists
+  if (!artistRaw) {
+    throw new Error("Artist not found");
+  }
+
+  const artistJson = artistRaw.toJSON();
+
+  if (artistJson.avatarUrl) {
+    artistJson.avatarUrl = await getUrlCloudinary(artistJson.avatarUrl);
+  }
+  if (artistJson.bannerUrl) {
+    artistJson.bannerUrl = await getUrlCloudinary(artistJson.bannerUrl);
+  }
+  const monthlyViews = await MouthlySongView.findOne({
+    where: { artistId: artistJson.id },
+    order: [
+      ["year", "DESC"],
+      ["month", "DESC"],
+    ],
+  });
+
+  const [song, album] = await Promise.all([
+    await transformPropertyInList(
+      artistJson.songs,
+      ["coverImage"],
+      getUrlCloudinary
+    ),
+    await transformPropertyInList(
+      artistJson.albums,
+      ["coverUrl"],
+      getUrlCloudinary
+    ),
+  ]);
+  artistJson.songs = song;
+  artistJson.albums = album;
+
+  return { artistJson, monthlyViews };
+};
+
+const myArtist = async (userId) => {
+  const artistRaw = await Artist.findOne({
+    where: { userId: userId },
     include: [
       {
         model: Album,
@@ -104,58 +236,10 @@ const getArtist = async ({ id, userId }) => {
           "createdAt",
         ],
       },
-    ],
-    attributes: {
-      include: [
-        "id",
-        "stageName",
-        "bio",
-        "avatarUrl",
-        "verified",
-        "bannerUrl",
-        "youtubeUrl",
-        "facebookUrl",
-        "instagramUrl",
-        [
-          sequelize.literal(
-            `(EXISTS (
-              SELECT 1 FROM "Follower" fs 
-              WHERE fs."ArtistId" = :artistId 
-                AND fs."UserId" = :userId
-            ))`
-          ),
-          "isFollow",
-        ],
-      ],
-    },
-    replacements: { artistId: id, userId }, // bind parameters
-  });
-
-  if (!artist) throw new Error("Artist not found");
-  return artist;
-};
-
-const myArtist = async (userId) => {
-  return await Artist.findOne({
-    where: { userId: userId },
-    include: [
       {
-        model: Album,
-        as: "albums", // phải trùng với tên association
-        attributes: ["id", "title", "coverUrl"],
-      },
-      {
-        model: Song,
-        as: "songs", // phải trùng với tên association
-        attributes: [
-          "id",
-          "coverImage",
-          "isVipOnly",
-          "title",
-          "song",
-          "view",
-          "createdAt",
-        ],
+        model: MouthlySongView,
+        as: "monthlyViews",
+        attributes: ["month", "date", "view"],
       },
     ],
     attributes: [
@@ -170,6 +254,23 @@ const myArtist = async (userId) => {
       "instagramUrl",
     ],
   });
+
+  const artistJson = artistRaw.toJSON();
+
+  if (artistJson.avatarUrl) {
+    artistJson.avatarUrl = await getUrlCloudinary(artistJson.avatarUrl);
+  }
+  if (artistJson.bannerUrl) {
+    artistJson.bannerUrl = await getUrlCloudinary(artistJson.bannerUrl);
+  }
+  const monthlyViews = await MouthlySongView.findOne({
+    where: { artistId: artistJson.id },
+    order: [
+      ["year", "DESC"],
+      ["month", "DESC"],
+    ],
+  });
+  return { artistJson, monthlyViews };
 };
 
 const updateArtist = async ({
@@ -180,24 +281,30 @@ const updateArtist = async ({
   bannerFile,
   socialMedia,
 }) => {
-  // Lấy artist hiện tại
   const artist = await Artist.findOne({ where: { userId } });
   if (!artist) notFound("Artist not found");
 
+  // Xử lý upload song song (nếu có file)
   const [avatarUpload, bannerUpload] = await Promise.all([
     avatarFile
-      ? uploadFromBuffer(avatarFile.buffer, "avatars")
-      : Promise.resolve(null),
+      ? (async () => {
+          await deleteFromCloudinary(artist.avatarUrl);
+          return uploadFromBuffer(avatarFile.buffer, "avatars");
+        })()
+      : null,
     bannerFile
-      ? uploadFromBuffer(bannerFile.buffer, "banner")
-      : Promise.resolve(null),
+      ? (async () => {
+          await deleteFromCloudinary(artist.bannerUrl);
+          return uploadFromBuffer(bannerFile.buffer, "banners");
+        })()
+      : null,
   ]);
 
   await artist.update({
     stageName: stageName ?? artist.stageName,
     bio: bio ?? artist.bio,
-    avatarUrl: avatarUpload ? avatarUpload.public_id : artist.avatarUrl,
-    bannerUrl: bannerUpload ? bannerUpload.public_id : artist.bannerUrl,
+    avatarUrl: avatarUpload?.secure_url ?? artist.avatarUrl,
+    bannerUrl: bannerUpload?.secure_url ?? artist.bannerUrl,
     youtubeUrl: socialMedia?.youtubeUrl ?? artist.youtubeUrl,
     facebookUrl: socialMedia?.facebookUrl ?? artist.facebookUrl,
     instagramUrl: socialMedia?.instagramUrl ?? artist.instagramUrl,
