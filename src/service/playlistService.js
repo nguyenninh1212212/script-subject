@@ -4,10 +4,10 @@ import {
   badRequest,
   alreadyExist,
 } from "../middleware/errorHandler.js";
-import { where } from "sequelize";
+import { where, Op } from "sequelize";
 import { transformPropertyInList } from "../util/help.js";
 import { getUrlCloudinary } from "../util/cloudinary.js";
-
+import sequelize from "sequelize";
 const createPlaylist = async ({ name, userId }) => {
   return await Playlist.create({ name, userId });
 };
@@ -17,42 +17,56 @@ const addSongToPlaylist = async (playlistId, songId) => {
   if (!playlist) throw notFound("Playlist not found");
   const song = await Song.findByPk(songId);
   if (!song) throw notFound("Song not found");
-  const exist = await playlist.getSongs(song);
-  if (exist) alreadyExist("Song");
-  await playlist.addSongs(song);
+  const exist = await playlist.hasSong(song);
+  if (exist) throw alreadyExist("Song");
+  await playlist.addSong(song);
   return playlist;
 };
 
 const getPlaylistsByUser = async (userId) => {
+  // Lấy tất cả playlist của user
   const playlists = await Playlist.findAll({
     where: { userId },
-    include: {
-      model: Song,
-      as: "songs",
-      attributes: ["id", "coverImage"],
-      limit: 4,
-    },
-    raw: false,
+    attributes: ["id", "name", "description"],
+
+    // Include bài hát qua subquery giới hạn 4 bài
+    include: [
+      {
+        model: Song,
+        as: "songs",
+        attributes: ["id", "coverImage"],
+        through: { attributes: [] }, // không lấy dữ liệu từ bảng trung gian
+        required: false,
+        // Custom join để chỉ lấy 4 bài mỗi playlist
+        on: {
+          "$songs.id$": {
+            [Op.in]: sequelize.literal(`(
+              SELECT s.id FROM "Songs" s
+              JOIN "PlaylistSong" ps ON ps."songId" = s."id"
+              WHERE ps."playlistId" = "Playlist"."id"
+              ORDER BY s."createdAt" DESC
+              LIMIT 4
+            )`),
+          },
+        },
+      },
+    ],
   });
 
-  const plJson = playlists.map((pl) => pl.toJSON());
-
-  const newPlaylists = await Promise.all(
-    plJson.map(async (pl) => {
+  // Xử lý coverImage qua Cloudinary
+  const result = await Promise.all(
+    playlists.map(async (pl) => {
+      const plJson = pl.toJSON();
       const transformedSongs = await transformPropertyInList(
-        pl.songs || [],
+        plJson.songs || [],
         ["coverImage"],
         getUrlCloudinary
       );
-
-      return {
-        ...pl,
-        songs: transformedSongs,
-      };
+      return { ...plJson, songs: transformedSongs };
     })
   );
 
-  return newPlaylists;
+  return result;
 };
 
 const getPlaylistById = async (id) => {

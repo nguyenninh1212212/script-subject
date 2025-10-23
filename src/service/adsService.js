@@ -77,6 +77,7 @@ const adsService = {
         startDate: { [Op.lte]: now },
         endDate: { [Op.gte]: now },
       },
+      attributes: ["type", "title", "redirectUrl", "mediaUrl", "id"],
     });
 
     if (!adsRaw || adsRaw.length === 0) return null;

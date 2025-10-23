@@ -89,6 +89,52 @@ router.get(
 );
 
 router.get(
+  "/favorite",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const { page = 1, size = 10 } = req.query;
+    const userId = req.user.sub;
+    const favourites = await songService.getFavourite({ userId }, page, size);
+    success(res, favourites);
+  })
+);
+router.delete(
+  "/favorite",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+
+    const { songId } = req.params;
+    await songService.deleteFavourite({ id, songId });
+    message(res, "success");
+  })
+);
+
+router.post(
+  "/remove",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const userId = req.user.sub;
+    const { songId } = req.body;
+    await songService.removeSong({ userId, songId });
+    message(res, "Remove success");
+  })
+);
+router.post(
+  "/restore",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const userId = req.user.sub;
+    const { id } = req.body;
+    await songService.restoreSong({ userId, id });
+    message(res, "Restore success");
+  })
+);
+
+router.get(
   "/artist/:artistId",
   authenticateToken(false),
   asyncHandler(async (req, res) => {
@@ -117,29 +163,6 @@ router.get(
   })
 );
 
-router.post(
-  "/remove",
-  authenticateToken(true),
-  asyncHandler(async (req, res) => {
-    // #swagger.tags = ['Song']
-    const userId = req.user.sub;
-    const { songId } = req.body;
-    await songService.removeSong({ userId, songId });
-    message(res, "Remove success");
-  })
-);
-router.post(
-  "/restore",
-  authenticateToken(true),
-  asyncHandler(async (req, res) => {
-    // #swagger.tags = ['Song']
-    const userId = req.user.sub;
-    const { id } = req.body;
-    await songService.restoreSong({ userId, id });
-    message(res, "Restore success");
-  })
-);
-
 router.delete(
   "/:id",
   authenticateToken(true),
@@ -160,10 +183,9 @@ router.patch(
 
     const userId = req.user.sub;
     const { id } = req.params;
-    const dataToUpdate = { ...req.body }; // Dữ liệu text từ form
-    const coverFile = req.file; // Lấy file đã upload (nếu có)
+    const dataToUpdate = { ...req.body };
+    const coverFile = req.file;
 
-    // Lọc các trường không cho phép cập nhật
     delete dataToUpdate.id;
     delete dataToUpdate.artistId;
 
@@ -190,28 +212,6 @@ router.post(
     const userId = req.user.sub;
     const { songId } = req.params;
     await songService.addToFavoutite({ userId, songId });
-    message(res, "success");
-  })
-);
-router.get(
-  "/favorite",
-  authenticateToken(true),
-  asyncHandler(async (req, res) => {
-    // #swagger.tags = ['Song']
-    const { page = 1, size = 10 } = req.query;
-    const userId = req.user.sub;
-    const favourites = await songService.getFavourite({ userId }, page, size);
-    success(res, favourites);
-  })
-);
-router.delete(
-  "/favorite",
-  authenticateToken(true),
-  asyncHandler(async (req, res) => {
-    // #swagger.tags = ['Song']
-
-    const { songId } = req.params;
-    await songService.deleteFavourite({ id, songId });
     message(res, "success");
   })
 );

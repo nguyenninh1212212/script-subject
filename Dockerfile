@@ -1,46 +1,45 @@
-# --- Giai đoạn 1: "Build" ---
-# Sử dụng image Node.js 20 (bản LTS) làm image cơ sở
-# Đặt tên giai đoạn này là "builder"
+# --- Giai đoạn 1: Build dependencies ---
 FROM node:20-alpine AS builder
 
-# Thiết lập thư mục làm việc bên trong container
+# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Sao chép file package.json và package-lock.json (hoặc yarn.lock)
+# Sao chép file định nghĩa package để cache npm install
 COPY package*.json ./
 
-# Cài đặt tất cả dependencies (bao gồm devDependencies để build nếu cần)
-RUN npm install
+# Cài dependencies (bao gồm devDependencies nếu có build)
+RUN npm ci
 
-# Sao chép toàn bộ mã nguồn còn lại của dự án vào
+# Sao chép toàn bộ mã nguồn vào container
 COPY . .
 
-# (Tùy chọn) Nếu dự án của bạn dùng TypeScript hoặc cần build
-# Hãy thêm lệnh build của bạn ở đây. Ví dụ:
+# Nếu có TypeScript hoặc build step (ví dụ React server, Prisma generate...)
 # RUN npm run build
 
-# --- Giai đoạn 2: "Production" ---
-# Bắt đầu lại từ một image node-alpine mới, sạch và nhẹ
+
+# --- Giai đoạn 2: Production runtime ---
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Sao chép file package.json và package-lock.json
+# Chỉ copy file package để cài đúng dependencies
 COPY package*.json ./
 
-# Chỉ cài đặt dependencies cần thiết cho production
-RUN npm install --omit=dev
+# Cài đặt dependencies production (omit dev)
+RUN npm ci --omit=dev
 
-# Sao chép mã nguồn đã build (nếu có) hoặc mã nguồn .js từ giai đoạn "builder"
-# Nếu bạn có bước RUN npm run build ở trên, bạn sẽ copy thư mục build (ví dụ: /app/dist)
+# Sao chép output từ giai đoạn builder
+COPY --from=builder /app ./
+
+# Nếu bạn có thư mục build (TypeScript hoặc Babel)
 # COPY --from=builder /app/dist ./dist
 
-# Nếu app của bạn là JavaScript thuần (không build), copy như sau:
-COPY --from=builder /app .
-
-# Mở port mà ứng dụng của bạn đang chạy (thay 3000 bằng port của bạn)
+# Mở port ứng dụng
 EXPOSE 8000
 
-# Lệnh để khởi chạy ứng dụng
-# Dựa trên log lỗi của bạn, có vẻ bạn dùng "bin/www" để khởi động
+# Đảm bảo khi container restart thì code mới nhất được dùng
+# (Cách chuẩn là dùng bind mount khi dev)
+# => Ví dụ docker run -v $(pwd):/app ...
+
+# Lệnh khởi chạy
 CMD [ "node", "./bin/www" ]

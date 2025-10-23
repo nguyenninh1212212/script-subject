@@ -54,10 +54,25 @@ const createSong = async ({ title, userId, songFile, coverFile }) => {
 // =================================================================
 // === ĐÃ CẬP NHẬT HÀM NÀY (getSongs) ===
 // =================================================================
-const getSongs = async ({ page, size }) => {
+const getSongs = async ({ page, size }, userId) => {
   const { limit, offset } = getPagination(page, size);
   const data = await Song.findAndCountAll({
-    attributes: ["id", "title", "coverImage", "duration"],
+    attributes: [
+      "id",
+      "title",
+      "coverImage",
+      "duration",
+      [
+        sequelize.literal(`EXISTS (
+          SELECT 1 
+          FROM "FavoriteSong" fs 
+          WHERE fs."SongId" = "Song"."id" 
+          AND fs."UserId" = ?
+        )`),
+        "isFavourite",
+      ],
+    ],
+    replacements: [userId || null],
     include: [
       {
         model: Artist,
@@ -155,7 +170,6 @@ const getSong = async ({ userId, id }) => {
       : null,
   ]);
 
-  // 5️⃣ Lấy previous và next song (LOGIC ĐÃ CẬP NHẬT)
   const currentId = songJson.id;
   const albumId = songJson.album ? songJson.album.id : null;
 
@@ -163,10 +177,6 @@ const getSong = async ({ userId, id }) => {
   let nextSong = null;
 
   if (albumId) {
-    // --- TRƯỜNG HỢP 1: BÀI HÁT CÓ TRONG ALBUM ---
-    // Sắp xếp theo ID (hoặc 'createdAt' nếu bạn muốn)
-
-    // Tìm bài trước đó TRONG ALBUM
     previousSong = await Song.findOne({
       where: {
         albumId: albumId,
@@ -198,21 +208,17 @@ const getSong = async ({ userId, id }) => {
       attributes: ["id"],
     });
 
-    // Nếu không có bài sau (đây là bài cuối cùng), LẤY BÀI ĐẦU ALBUM (wrap around)
     if (!nextSong) {
       nextSong = await Song.findOne({
         where: {
           albumId: albumId,
-          id: { [sequelize.Op.ne]: currentId }, // Đảm bảo không phải chính nó
+          id: { [sequelize.Op.ne]: currentId },
         },
-        order: [["id", "ASC"]], // Lấy bài đầu tiên
+        order: [["id", "ASC"]],
         attributes: ["id"],
       });
     }
   } else {
-    // --- TRƯỜNG HỢP 2: BÀI HÁT KHÔNG CÓ ALBUM (Logic cũ) ---
-
-    // Tìm bài trước (toàn cục)
     previousSong = await Song.findOne({
       where: { id: { [sequelize.Op.lt]: currentId } },
       order: [["id", "DESC"]],
@@ -352,15 +358,14 @@ const addToFavoutite = async ({ userId, songId }) => {
 };
 
 const getFavourite = async ({ userId }, page, size) => {
+  if (!userId) return null;
   const user = await User.findByPk(userId);
-  if (!user) badRequest("User not existing");
   const { limit, offset } = getPagination(page, size);
   const songs = await user.getFavoriteSongs({
     limit: limit,
     offset: offset,
     order: [["createdAt", "ASC"]],
   });
-
   return getPagingData(songs, page, size);
 };
 const deleteFavourite = async ({ id, userId }) => {

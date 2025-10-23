@@ -65,11 +65,28 @@ const getAlbums = async ({ page, size }) => {
 
 const getAlbum = async ({ id }) => {
   const data = await Album.findByPk(id, {
-    include: { model: Song, as: "songs" },
+    include: [
+      {
+        model: Song,
+        as: "songs",
+        attributes: ["id", "duration", "coverImage", "title", "song"],
+      },
+      {
+        model: Artist,
+        as: "artist",
+        attributes: ["id", "stageName"],
+      },
+    ],
+    attributes: ["id", "coverUrl", "releaseDate", "createdAt", "title"],
   });
 
   const album = data.toJSON();
   album.coverUrl = data.coverUrl ? await getUrlCloudinary(data.coverUrl) : null;
+  album.songs = await transformPropertyInList(
+    album.songs,
+    ["coverImage", "song"],
+    getUrlCloudinary
+  );
   return album;
 };
 

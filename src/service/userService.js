@@ -1,4 +1,4 @@
-import { User, Role } from "../model/entity/index.js";
+import { User, Role, Artist } from "../model/entity/index.js";
 import { generateToken } from "../util/jwt.js";
 import bcrypt from "bcryptjs";
 import createError from "http-errors";
@@ -52,13 +52,15 @@ const register = async ({ username, email, password, name }) => {
 const login = async ({ username, password }) => {
   const user = await User.findOne({
     where: {
-      [Op.or]: [{ username }, { email: username }], // cho phép login bằng username hoặc email
+      [Op.or]: [{ username }, { email: username }],
     },
   });
 
   if (!user) {
     throw unauthorized("Invalid credentials");
   }
+
+  const artist = await Artist.findOne({ where: { userId: user.id } });
 
   if (!user.password) {
     throw unauthorized("This account only supports Google login");
@@ -88,7 +90,7 @@ const login = async ({ username, password }) => {
 
   user.refreshToken = refreshToken;
   await user.save();
-  return { token, refreshToken };
+  return { token, refreshToken, name: user.name, artistId: artist?.id };
 };
 
 const changeName = async ({ name, userId }) => {
@@ -177,11 +179,9 @@ const googleLogin = async ({ credential }) => {
 };
 
 const refreshToken = async ({ refreshToken }) => {
-  console.log("🚀 ~ refreshToken ~ refreshToken:", refreshToken);
   if (!refreshToken) {
     throw unauthorized("Refresh token not found");
   }
-  console.log("🚀 ~ refreshToken ~ refreshToken:", refreshToken);
 
   let payload;
   try {
@@ -217,7 +217,15 @@ const refreshToken = async ({ refreshToken }) => {
     sub: user.id,
     roles: roleNames,
   });
-  return newAccessToken;
+  const artist = await Artist.findOne({ where: { userId: user.id } });
+
+  return {
+    user: {
+      token: newAccessToken,
+      name: user.name || "Anonymous",
+      artistId: artist?.id || null,
+    },
+  };
 };
 
 export default {

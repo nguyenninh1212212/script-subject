@@ -20,7 +20,13 @@ router.post(
       secure: process.env.IS_DEV == "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    success(res, token.token);
+    success(res, {
+      user: {
+        name: token.name || "Anonymous",
+        artistId: token.artistId || null,
+        token: token.token,
+      },
+    });
   })
 );
 
@@ -35,7 +41,7 @@ router.post(
   })
 );
 router.put(
-  "/register",
+  "/change-password",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { name } = req.body;
@@ -50,7 +56,7 @@ router.get(
     // #swagger.tags = ['User']
     const refreshToken = req.cookies.refreshToken;
     const newToken = await userService.refreshToken({ refreshToken });
-    success(res, newToken);
+    success(res, { user: newToken.user });
   })
 );
 
