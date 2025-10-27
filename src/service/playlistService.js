@@ -28,16 +28,13 @@ const getPlaylistsByUser = async (userId) => {
   const playlists = await Playlist.findAll({
     where: { userId },
     attributes: ["id", "name", "description"],
-
-    // Include bài hát qua subquery giới hạn 4 bài
     include: [
       {
         model: Song,
         as: "songs",
         attributes: ["id", "coverImage"],
-        through: { attributes: [] }, // không lấy dữ liệu từ bảng trung gian
+        through: { attributes: [] },
         required: false,
-        // Custom join để chỉ lấy 4 bài mỗi playlist
         on: {
           "$songs.id$": {
             [Op.in]: sequelize.literal(`(
@@ -75,7 +72,17 @@ const getPlaylistById = async (id) => {
       {
         model: Song,
         as: "songs",
-        attributes: ["id", "title", "song", "coverImage", "isVipOnly"],
+        attributes: [
+          "id",
+          "title",
+          "song",
+          "coverImage",
+          "isVipOnly",
+          "duration",
+        ],
+        through: {
+          attributes: [],
+        },
       },
     ],
   });
@@ -123,7 +130,7 @@ const deletePlaylist = async ({ userId, id }) => {
     where: { id },
     include: {
       model: User,
-      as: "user",
+      as: "owner",
       where: { id: userId },
     },
   });

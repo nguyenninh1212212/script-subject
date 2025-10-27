@@ -184,9 +184,20 @@ const refreshToken = async ({ refreshToken }) => {
   }
 
   let payload;
+  const user = await User.findOne({
+    where: {
+      refreshToken: refreshToken,
+    },
+  });
+
+  if (!user) {
+    throw unauthorized("Invalid or revoked refresh token");
+  }
   try {
     payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
   } catch (err) {
+    user && (user.refreshToken = null);
+    user && (await user.update());
     throw forbidden("Invalid or expired refresh token");
   }
   let decryptedData;
@@ -198,16 +209,6 @@ const refreshToken = async ({ refreshToken }) => {
 
   if (!decryptedData.isRefresh) {
     throw unauthorized("Invalid token type");
-  }
-
-  const user = await User.findOne({
-    where: {
-      id: decryptedData.sub,
-      refreshToken,
-    },
-  });
-  if (!user) {
-    throw unauthorized("Invalid or revoked refresh token");
   }
 
   const roles = await user.getRoles();

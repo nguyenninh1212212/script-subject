@@ -157,7 +157,7 @@ router.get(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
     const userId = req.user?.sub || null;
-    const id = req.params;
+    const { id } = req.params;
     const songs = await songService.getSong({ userId, id });
     success(res, songs);
   })

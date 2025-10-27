@@ -100,15 +100,36 @@ const getSongs = async ({ page, size }, userId) => {
   return paginatedData;
 };
 
+import { Op } from "sequelize"; // Đảm bảo import Op
+
+const incrementViews = async (artistId, songId) => {
+  try {
+    await Song.increment("view", { by: 1, where: { id: songId } });
+
+    // 2. Tăng view theo tháng
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+
+    const [record, created] = await MouthlySongView.findOrCreate({
+      where: { artistId, year: currentYear, month: currentMonth },
+      defaults: { view: 1 },
+    });
+
+    if (!created) {
+      await record.increment("view", { by: 1 });
+    }
+  } catch (err) {
+    // Ghi log lỗi, nhưng không làm sập request chính
+    console.error("Failed to increment views:", err);
+  }
+};
+
+// HÀM CHÍNH ĐÃ TỐI ƯU
 const getSong = async ({ userId, id }) => {
-  // 1️⃣ Lấy bài hát hiện tại (bao gồm cả album)
+  // 1️⃣ Lấy bài hát (ĐÃ SỬA BIND)
   const song = await Song.findByPk(id.id, {
     include: [
-      {
-        model: Album,
-        as: "album",
-        attributes: ["id", "title"], // Đã có thông tin album
-      },
+      { model: Album, as: "album", attributes: ["id", "title"] },
       {
         model: Artist,
         as: "artist",
@@ -124,150 +145,101 @@ const getSong = async ({ userId, id }) => {
       "createdAt",
       [
         sequelize.literal(`EXISTS (
-          SELECT 1 
-          FROM "FavoriteSong" fs 
-          WHERE fs."SongId" = "Song"."id" 
-          AND fs."UserId" = ?
+          SELECT 1 FROM "FavoriteSong" fs 
+          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = $userId
         )`),
         "isFavourite",
       ],
     ],
-    replacements: [userId || null],
+    bind: { userId: userId || null },
   });
 
   if (!song) return null;
 
-  // 2️⃣ Kiểm tra subscription
-  const isSubscription = await subscriptionService.checkSubscription({
-    userId,
-    type: subscriptionType.USER,
-  });
+  incrementViews(song.artist.id, song.id);
 
-  // 3️⃣ Tăng view
-  await Song.increment("view", { by: 1, where: { id: id.id } });
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-
-  const [record, created] = await MouthlySongView.findOrCreate({
-    where: {
-      artistId: song.artist.id,
-      year: currentYear,
-      month: currentMonth,
-    },
-    defaults: { view: 1 },
-  });
-  if (!created) await record.increment("view", { by: 1 });
-
-  // 4️⃣ Convert và lấy URL Cloudinary
   const songJson = song.toJSON();
-  await Promise.all([
-    (songJson.song = await getUrlCloudinary(songJson.song)),
-    (songJson.coverImage = await getUrlCloudinary(songJson.coverImage)),
-    songJson.artist.avatarUrl
-      ? (songJson.artist.avatarUrl = await getUrlCloudinary(
-          songJson.artist.avatarUrl
-        ))
-      : null,
-  ]);
-
   const currentId = songJson.id;
   const albumId = songJson.album ? songJson.album.id : null;
+  const commonWhere = albumId ? { albumId } : { albumId: null };
+  const prevQuery = Song.findOne({
+    where: { ...commonWhere, id: { [Op.lt]: currentId } },
+    order: [["id", "DESC"]],
+    attributes: ["id"],
+  });
+  const nextQuery = Song.findOne({
+    where: { ...commonWhere, id: { [Op.gt]: currentId } },
+    order: [["id", "ASC"]],
+    attributes: ["id"],
+  });
 
-  let previousSong = null;
-  let nextSong = null;
+  const [
+    isSubscription,
+    ads,
+    songUrl,
+    coverImageUrl,
+    avatarUrl,
+    previousSong,
+    nextSong,
+  ] = await Promise.all([
+    subscriptionService.checkSubscription({
+      userId,
+      type: subscriptionType.USER,
+    }),
+    adsService.getRandomAd(),
+    getUrlCloudinary(songJson.song),
+    getUrlCloudinary(songJson.coverImage),
+    songJson.artist.avatarUrl
+      ? getUrlCloudinary(songJson.artist.avatarUrl)
+      : Promise.resolve(null),
+    prevQuery,
+    nextQuery,
+  ]);
 
-  if (albumId) {
-    previousSong = await Song.findOne({
-      where: {
-        albumId: albumId,
-        id: { [sequelize.Op.lt]: currentId }, // ID nhỏ hơn
-      },
-      order: [["id", "DESC"]], // Lấy bài gần nhất
-      attributes: ["id"],
-    });
+  songJson.song = songUrl;
+  songJson.coverImage = coverImageUrl;
+  songJson.artist.avatarUrl = avatarUrl;
+  let finalPrev = previousSong;
+  let finalNext = nextSong;
 
-    // Nếu không có bài trước (đây là bài đầu tiên), LẤY BÀI CUỐI ALBUM (wrap around)
-    if (!previousSong) {
-      previousSong = await Song.findOne({
-        where: {
-          albumId: albumId,
-          id: { [sequelize.Op.ne]: currentId }, // Đảm bảo không phải chính nó
-        },
-        order: [["id", "DESC"]], // Lấy bài cuối cùng
-        attributes: ["id"],
-      });
-    }
+  if (!previousSong || !nextSong) {
+    const [firstSong, lastSong] = await Promise.all([
+      !nextSong
+        ? Song.findOne({
+            where: commonWhere,
+            order: [["id", "ASC"]],
+            attributes: ["id"],
+          })
+        : Promise.resolve(null),
 
-    // Tìm bài tiếp theo TRONG ALBUM
-    nextSong = await Song.findOne({
-      where: {
-        albumId: albumId,
-        id: { [sequelize.Op.gt]: currentId }, // ID lớn hơn
-      },
-      order: [["id", "ASC"]], // Lấy bài gần nhất
-      attributes: ["id"],
-    });
+      !previousSong
+        ? Song.findOne({
+            where: commonWhere,
+            order: [["id", "DESC"]],
+            attributes: ["id"],
+          })
+        : Promise.resolve(null),
+    ]);
 
-    if (!nextSong) {
-      nextSong = await Song.findOne({
-        where: {
-          albumId: albumId,
-          id: { [sequelize.Op.ne]: currentId },
-        },
-        order: [["id", "ASC"]],
-        attributes: ["id"],
-      });
-    }
-  } else {
-    previousSong = await Song.findOne({
-      where: { id: { [sequelize.Op.lt]: currentId } },
-      order: [["id", "DESC"]],
-      attributes: ["id"],
-    });
-
-    // Fallback logic cũ
-    if (!previousSong) {
-      previousSong = await Song.findOne({
-        where: { id: { [sequelize.Op.ne]: currentId } },
-        attributes: ["id"],
-      });
-    }
-
-    nextSong = await Song.findOne({
-      where: { id: { [sequelize.Op.gt]: currentId } },
-      order: [["id", "ASC"]],
-      attributes: ["id"],
-    });
-
-    if (!nextSong) {
-      nextSong = await Song.findOne({
-        where: { id: { [sequelize.Op.ne]: currentId } },
-        attributes: ["id"],
-      });
-    }
+    if (!previousSong) finalPrev = lastSong;
+    if (!nextSong) finalNext = firstSong;
   }
 
-  if (previousSong && previousSong.id === currentId) previousSong = null;
-  if (nextSong && nextSong.id === currentId) nextSong = null;
+  if (finalPrev && finalPrev.id === currentId) finalPrev = null;
+  if (finalNext && finalNext.id === currentId) finalNext = null;
 
-  songJson.previousSongId = previousSong ? previousSong.id : null;
-  songJson.nextSongId = nextSong ? nextSong.id : null;
+  songJson.previousSongId = finalPrev ? finalPrev.id : null;
+  songJson.nextSongId = finalNext ? finalNext.id : null;
 
-  // 6️⃣ Quảng cáo
-  if (isSubscription) {
+  if (isSubscription || !ads || ads.type !== "AUDIO") {
     songJson.ads = null;
-    return songJson;
-  }
-
-  const ads = await adsService.getRandomAd();
-  if (ads && ads.type === "AUDIO") {
+  } else {
     songJson.ads = ads;
-  } else {
-    songJson.ads = null;
   }
 
   return songJson;
 };
+
 const removeSong = async ({ userId, songId }) => {
   const song = await Song.findOne({
     where: { id: songId },

@@ -19,7 +19,7 @@ export const authenticateToken =
 
       jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
-          if (require) return res.status(403).json({ message: "Forbidden" });
+          if (require) return res.status(401).json({ message: "Unauthorized" });
           return next();
         }
         req.user = AESDecrypt(user.data);
