@@ -64,14 +64,30 @@ const checkSubscription = async ({ userId, type, status = "ACTIVE" }) => {
   return subscription ? true : false;
 };
 
-const getSubscriptions = async ({ userId }) => {
-  const { limit, offset } = getPagination(1, 10);
-  const subscriptions = await Subscription.findAndCountAll({
+const getSubscriptions = async ({ userId, page = 1, size = 10 }) => {
+  const { limit, offset } = getPagination(page, size);
+
+  const { count: totalItems, rows: plans } =
+    await SubscriptionPlan.findAndCountAll({
+      limit,
+      offset,
+      order: [["price", "ASC"]],
+    });
+
+  const userSubscriptions = await Subscription.findAll({
     where: { userId },
-    limit,
-    offset,
+    attributes: ["id", "planId", "status", "expiresAt", "createdAt"],
   });
-  return getPagingData(subscriptions, 1, limit);
+
+  const result = plans.map((plan) => {
+    const sub = userSubscriptions.find((s) => s.planId === plan.id);
+    return {
+      ...plan.toJSON(),
+      subscription: sub ? sub.toJSON() : null,
+    };
+  });
+
+  return getPagingData({ count: totalItems, rows: result }, page, limit);
 };
 
 const renewSubscription = async ({ userId, id }) => {

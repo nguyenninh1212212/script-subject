@@ -104,9 +104,10 @@ router.delete(
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
-
-    const { songId } = req.params;
-    await songService.deleteFavourite({ id, songId });
+    const { songId } = req.query;
+    console.log("🚀 ~ songId:", songId);
+    const userId = req.user.sub;
+    await songService.deleteFavourite({ userId, id: songId });
     message(res, "success");
   })
 );

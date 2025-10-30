@@ -24,6 +24,7 @@ const doc = {
     { name: "Ads", description: "Quảng cáo" },
     { name: "Subscription", description: "" },
     { name: "Subscription plan", description: "" },
+    { name: "NFT", description: "" },
   ],
   securityDefinitions: {
     bearerAuth: {

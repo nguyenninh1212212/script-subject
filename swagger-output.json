@@ -41,6 +41,10 @@
     {
       "name": "Subscription plan",
       "description": ""
+    },
+    {
+      "name": "NFT",
+      "description": ""
     }
   ],
   "paths": {
@@ -50,6 +54,19 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/": {
+      "get": {
+        "tags": [
+          "Home"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }
@@ -118,7 +135,9 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/user/change-password": {
       "put": {
         "tags": [
           "User"
@@ -143,38 +162,7 @@
             }
           }
         }
-      }
-    },
-    "/api/user/refresh": {
-      "get": {
-        "tags": [
-          "User"
-        ],
-        "description": "",
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/user/": {
-      "get": {
-        "tags": [
-          "User"
-        ],
-        "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/user/change-password": {
+      },
       "post": {
         "tags": [
           "User"
@@ -207,6 +195,32 @@
         }
       }
     },
+    "/api/user/refresh": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/user/": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/user/logout": {
       "post": {
         "tags": [
@@ -216,9 +230,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -250,26 +261,89 @@
         }
       }
     },
-    "/api/subscriptions/": {
+    "/api/ads/": {
+      "post": {
+        "tags": [
+          "Ads"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "content-type",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "example": "any"
+                  },
+                  "redirectUrl": {
+                    "example": "any"
+                  },
+                  "startDate": {
+                    "example": "any"
+                  },
+                  "endDate": {
+                    "example": "any"
+                  },
+                  "isActive": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "tags": [
-          "Subscription"
+          "Ads"
         ],
         "description": "",
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
     },
-    "/api/subscriptions/subcribe/{id}": {
-      "post": {
+    "/api/ads/random": {
+      "get": {
         "tags": [
-          "Subscription"
+          "Ads"
+        ],
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/ads/{id}": {
+      "delete": {
+        "tags": [
+          "Ads"
         ],
         "description": "",
         "parameters": [
@@ -285,9 +359,49 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/": {
+      "get": {
+        "tags": [
+          "Subscription"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/subscriptions/subscribe/{id}": {
+      "post": {
+        "tags": [
+          "Subscription"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
-          "403": {
-            "description": "Forbidden"
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }
@@ -311,9 +425,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -327,9 +438,29 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/payments/order/{orderId}": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }
@@ -343,9 +474,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -412,9 +540,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       },
@@ -426,9 +551,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -484,9 +606,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -539,9 +658,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -601,9 +717,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -675,9 +788,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -722,9 +832,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -755,9 +862,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -781,9 +885,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       },
@@ -805,9 +906,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -821,9 +919,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -875,9 +970,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -919,9 +1011,109 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/songs/favorite": {
+      "get": {
+        "tags": [
+          "Song"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           },
-          "403": {
-            "description": "Forbidden"
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Song"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "songId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/songs/remove": {
+      "post": {
+        "tags": [
+          "Song"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "songId": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/songs/restore": {
+      "post": {
+        "tags": [
+          "Song"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -959,9 +1151,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -985,9 +1174,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       },
@@ -1009,9 +1195,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       },
@@ -1033,69 +1216,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/songs/remove": {
-      "post": {
-        "tags": [
-          "Song"
-        ],
-        "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "songId": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/songs/restore": {
-      "post": {
-        "tags": [
-          "Song"
-        ],
-        "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -1119,55 +1239,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/songs/favorite": {
-      "get": {
-        "tags": [
-          "Song"
-        ],
-        "description": "",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Song"
-        ],
-        "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -1181,9 +1252,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -1242,9 +1310,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -1289,9 +1354,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -1322,9 +1384,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -1349,9 +1408,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -1395,9 +1451,6 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -1444,67 +1497,15 @@
         }
       }
     },
-    "/api/paypal/cancel": {
-      "get": {
-        "tags": [
-          "Payment"
-        ],
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/ads/random": {
-      "get": {
-        "tags": [
-          "Ads"
-        ],
-        "description": "",
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/ads/": {
-      "get": {
-        "tags": [
-          "Ads"
-        ],
-        "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      },
+    "/api/nft/mint-ticket": {
       "post": {
         "tags": [
-          "Ads"
+          "NFT"
         ],
         "description": "",
-        "parameters": [
-          {
-            "name": "type",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "401": {
             "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
         "requestBody": {
@@ -1513,40 +1514,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "title": {
-                    "example": "any"
-                  },
-                  "redirectUrl": {
-                    "example": "any"
-                  },
-                  "startDate": {
-                    "example": "any"
-                  },
-                  "endDate": {
-                    "example": "any"
-                  },
-                  "isActive": {
+                  "userAddress": {
                     "example": "any"
                   }
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/": {
-      "get": {
-        "tags": [
-          "Home"
-        ],
-        "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }

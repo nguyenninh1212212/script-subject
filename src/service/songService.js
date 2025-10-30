@@ -100,8 +100,6 @@ const getSongs = async ({ page, size }, userId) => {
   return paginatedData;
 };
 
-import { Op } from "sequelize"; // Đảm bảo import Op
-
 const incrementViews = async (artistId, songId) => {
   try {
     await Song.increment("view", { by: 1, where: { id: songId } });
@@ -126,7 +124,6 @@ const incrementViews = async (artistId, songId) => {
 
 // HÀM CHÍNH ĐÃ TỐI ƯU
 const getSong = async ({ userId, id }) => {
-  // 1️⃣ Lấy bài hát (ĐÃ SỬA BIND)
   const song = await Song.findByPk(id.id, {
     include: [
       { model: Album, as: "album", attributes: ["id", "title"] },
@@ -151,7 +148,7 @@ const getSong = async ({ userId, id }) => {
         "isFavourite",
       ],
     ],
-    bind: { userId: userId || null },
+    replacements: { userId: userId || null },
   });
 
   if (!song) return null;
@@ -322,7 +319,7 @@ const addToFavoutite = async ({ userId, songId }) => {
     await User.findByPk(userId),
     await Song.findByPk(songId),
   ]);
-  const exist = await user.getFavoriteSongs(song);
+  const exist = await user.hasFavoriteSong(song);
   if (exist) alreadyExist("Song");
   if (!user) badRequest("User not existing");
   if (!song) badRequest("Song not exist");
@@ -332,20 +329,52 @@ const addToFavoutite = async ({ userId, songId }) => {
 const getFavourite = async ({ userId }, page, size) => {
   if (!userId) return null;
   const user = await User.findByPk(userId);
+  if (!user) throw new Error("User not found");
+
   const { limit, offset } = getPagination(page, size);
-  const songs = await user.getFavoriteSongs({
-    limit: limit,
-    offset: offset,
-    order: [["createdAt", "ASC"]],
+
+  const allFavorites = await user.getFavoriteSongs({
+    through: { attributes: [] }, // 🧹 loại bỏ dữ liệu bảng trung gian
   });
-  return getPagingData(songs, page, size);
+  const totalItems = allFavorites.length;
+
+  const songs = await user.getFavoriteSongs({
+    joinTableAttributes: [], // 👈 Cách mới, chắc chắn loại bỏ FavoriteSong
+    limit,
+    offset,
+    order: [["createdAt", "ASC"]],
+    attributes: [
+      "id",
+      "title",
+      "coverImage",
+      "duration",
+      "song",
+      [sequelize.literal(true), "isFavourite"],
+    ],
+  });
+
+  const songsJson = songs.map((song) => song.toJSON());
+
+  const transformedSongs = await transformPropertyInList(
+    songsJson,
+    ["song", "coverImage"],
+    getUrlCloudinary
+  );
+
+  return getPagingData(
+    { rows: transformedSongs, count: totalItems },
+    page,
+    size
+  );
 };
+
 const deleteFavourite = async ({ id, userId }) => {
-  const user = User.findByPk(userId);
-  const song = Song.findByPk(id);
+  console.log("🚀 ~ deleteFavourite ~ id:", id);
+  const user = await User.findByPk(userId);
+  const song = await Song.findByPk(id);
   if (!user) badRequest("User not existing");
   if (!song) badRequest("Song not exist");
-  await user.removeFavoriteSong(song);
+  await user.removeFavoriteSongs(song);
 };
 
 const getSongsByArtist = async ({ artistId }) => {

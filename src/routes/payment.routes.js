@@ -39,5 +39,15 @@ router.get(
     success(res, subs);
   })
 );
+router.get(
+  "/order/:orderId",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Payment']
+    const { orderId } = req.params;
+    const subs = await paymentService.getPaymentOrder(orderId);
+    success(res, subs);
+  })
+);
 
 export default router;

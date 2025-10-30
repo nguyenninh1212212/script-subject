@@ -14,26 +14,29 @@ router.get(
 
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Subscription']
-    const subs = await subscriptionService.getSubscriptions({ userId });
+    const subs = await subscriptionService.getSubscriptions({
+      userId: req.user.sub,
+    });
     success(res, subs);
   })
 );
 
 router.post(
-  "/subcribe/:id",
+  "/subscribe/:id",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Subscription']
-
     const { id } = req.params;
+    const { type } = req.query;
     const userId = req.user.sub;
     const ip = req.ip;
     const geo = geoip.lookup(ip);
     const approveUrl = await paymentService.createSubscriptionOrderPaypal(
       {
-        planId:id,
+        planId: id,
         userId,
-        type: "subscription",
+        type,
+        paymentType: "subscription",
       },
       geo
     );

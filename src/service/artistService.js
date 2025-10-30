@@ -136,6 +136,14 @@ export const getArtist = async ({ id, userId }) => {
           "view",
           "createdAt",
           "duration",
+          [
+            sequelize.literal(`(
+          SELECT COUNT(*) 
+          FROM "Follower" AS f 
+          WHERE f."ArtistId" = "Artist"."id"
+        )`),
+            "followerCount",
+          ],
         ],
         order: [["view", "DESC"]],
       },
@@ -239,7 +247,7 @@ const myArtist = async (userId) => {
       {
         model: MouthlySongView,
         as: "monthlyViews",
-        attributes: ["month", "date", "view"],
+        attributes: ["month", "year", "view"],
       },
     ],
     attributes: [
@@ -252,6 +260,14 @@ const myArtist = async (userId) => {
       "youtubeUrl",
       "facebookUrl",
       "instagramUrl",
+      [
+        sequelize.literal(`(
+          SELECT COUNT(*) 
+          FROM "Follower" AS f 
+          WHERE f."ArtistId" = "Artist"."id"
+        )`),
+        "followerCount",
+      ],
     ],
   });
 
@@ -263,14 +279,21 @@ const myArtist = async (userId) => {
   if (artistJson.bannerUrl) {
     artistJson.bannerUrl = await getUrlCloudinary(artistJson.bannerUrl);
   }
-  const monthlyViews = await MouthlySongView.findOne({
-    where: { artistId: artistJson.id },
-    order: [
-      ["year", "DESC"],
-      ["month", "DESC"],
-    ],
-  });
-  return { artistJson, monthlyViews };
+
+  await Promise.all([
+    (artistJson.songs = await transformPropertyInList(
+      artistJson.songs,
+      ["coverImage"],
+      getUrlCloudinary
+    )),
+    (artistJson.albums = await transformPropertyInList(
+      artistJson.albums,
+      ["coverUrl"],
+      getUrlCloudinary
+    )),
+  ]);
+
+  return { artistJson };
 };
 
 const updateArtist = async ({

@@ -8,7 +8,7 @@ import client from "../config/payment_wallet/paypal.config.js";
 import paypal from "@paypal/checkout-server-sdk";
 import { convertCurrency } from "../util/foreignCurrency.js";
 import currentMap from "../../currentCode.json" with  { type: "json" };
-import { notFound } from "../middleware/errorHandler.js";
+import { alreadyExist, notFound } from "../middleware/errorHandler.js";
 
 const PAYPAL_SUCCESS_URL = process.env.PAYPAL_SUCCESS_URL;
 const PAYPAL_CANCEL_URL = process.env.PAYPAL_CANCEL_URL;
@@ -21,15 +21,19 @@ const createPayment= async({
   paymentType,
   transactionId,
   currencyCode,
+  desciption,
+  orderId
 })=> {
    return await Payment.create({
     userId,
-        amount,
+    amount,
     method,
     status,
     paymentType,
     transactionId,
     currencyCode,
+    desciption ,
+    orderId
   });
 
 }
@@ -71,18 +75,25 @@ const createOrderPaypal =async({planId,userId,type,price},geo)=>{
   return approveUrl;
 }
 
-const createSubscriptionOrderPaypal= async({ subscriptionId, userId ,type}, geo) =>{
-  const subscription = await Subscription.findByPk(subscriptionId);
-  if(!subscription) notFound("SUbscription");
-  const plan = await SubscriptionPlan.findByPk(subscription);
-  if (!plan) {
-    notFound("Subscription plan not found");
-  }
-  console.log("🚀 ~ createSubscriptionOrderPaypal ~ plan.price:", plan.price)
+const createSubscriptionOrderPaypal= async({ planId, userId ,type,paymentType}, geo) =>{
+    const plan = await SubscriptionPlan.findByPk(planId);
+    if (!plan) {
+     notFound("Subscription plan");
+    }
+  const subscription = await Subscription.count({where:{userId :userId,status:"ACTIVE"},
+    include:[
+      {
+        model:SubscriptionPlan,
+        as:"plan",
+        where:{type:type},
+      }
+      ]} );
 
-  return createOrderPaypal({ planId, userId ,type,price:plan.price}, geo);
-  
+  if(subscription > 0) alreadyExist("Subscription");
+
+  return createOrderPaypal({ planId, userId ,type:paymentType,price:plan.price}, geo);
 }
+
 const createRenewSubOrderPaypal= async({ id, userId ,type}, geo) =>{
   const subscription = await Subscription.findByPk(id);
   if (!subscription) {
@@ -100,8 +111,15 @@ if (!plan) {
 const getPaymentHistory=async ({userId})=>{
    return await Payment.findAll({
     where: { userId },
-    attribute:["id","amount","method","status","transactionId","paymentType","createdAt","subscriptionId","currencyCode"]
+    attributes:["id","amount","method","status","transactionId","paymentType","createdAt","currencyCode"]
   });
 }
 
-export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal };
+const getPaymentOrder=async (orderId)=>{
+   return await Payment.findOne({
+    where: { orderId },
+    attributes:["id","amount","method","status","transactionId","paymentType","createdAt","currencyCode"]
+  });
+}
+
+export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal, getPaymentOrder };
