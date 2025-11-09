@@ -4,7 +4,7 @@ import sequelize from "../config/db.config.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { toMidnight } from "../util/help.js";
 
-const createSubscription = async ({ userId, planId }) => {
+const createSubscription = async ({ userId, planId, transactionId }) => {
   const t = await sequelize.transaction();
   const plan = await SubscriptionPlan.findByPk(planId);
   if (!plan) {
@@ -32,6 +32,7 @@ const createSubscription = async ({ userId, planId }) => {
     userId,
     planId,
     expiresAt: expiresAtObj,
+    transactionId,
   });
 };
 

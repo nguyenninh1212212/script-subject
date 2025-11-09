@@ -1477,9 +1477,6 @@
     },
     "/api/paypal/success": {
       "get": {
-        "tags": [
-          "Payment"
-        ],
         "description": "",
         "parameters": [
           {
@@ -1515,6 +1512,60 @@
                 "type": "object",
                 "properties": {
                   "userAddress": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nft/set-fee": {
+      "post": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newFee": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nft/set-wallet": {
+      "post": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newWallet": {
                     "example": "any"
                   }
                 }

@@ -9,6 +9,7 @@ import paypal from "@paypal/checkout-server-sdk";
 import { convertCurrency } from "../util/foreignCurrency.js";
 import currentMap from "../../currentCode.json" with  { type: "json" };
 import { alreadyExist, notFound } from "../middleware/errorHandler.js";
+import { where } from "sequelize";
 
 const PAYPAL_SUCCESS_URL = process.env.PAYPAL_SUCCESS_URL;
 const PAYPAL_CANCEL_URL = process.env.PAYPAL_CANCEL_URL;
@@ -115,11 +116,42 @@ const getPaymentHistory=async ({userId})=>{
   });
 }
 
-const getPaymentOrder=async (orderId)=>{
-   return await Payment.findOne({
+const getPaymentOrder = async (orderId) => {
+  const order = await Payment.findOne({
     where: { orderId },
-    attributes:["id","amount","method","status","transactionId","paymentType","createdAt","currencyCode"]
+    attributes: [
+      "id",
+      "amount",
+      "method",
+      "status",
+      "transactionId",
+      "paymentType",
+      "createdAt",
+      "currencyCode",
+      "orderId",
+    ],
+    raw: true,
   });
-}
+
+  if (!order) return null;
+
+  const subscription = await Subscription.findOne({
+    where: { transactionId: order.transactionId },
+    include: [
+      {
+        model: SubscriptionPlan,
+        as: "plan",
+        attributes: ["id", "name", "type", "price","duration"],
+      },
+    ],
+  });
+
+  return {
+    order: {
+      ...order,
+      item: subscription?.plan || null,
+    },
+  };
+};
 
 export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal, getPaymentOrder };

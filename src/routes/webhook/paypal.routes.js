@@ -11,12 +11,11 @@ import subscriptionService from "../../service/subscriptionService.js"; // Phả
 const router = express.Router();
 
 // Lấy URL frontend từ file .env
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 router.get(
   "/success",
   asyncHandler(async (req, res) => {
-    // #swagger.tags = ['Payment']
     const { token } = req.query;
 
     try {
@@ -28,46 +27,33 @@ router.get(
 
       if (result.status === "COMPLETED") {
         const { reference_id } = capture.result.purchase_units[0];
-        // type ở đây là "USER" hoặc "ARTIST"
         const [planId, userId, type] = reference_id.split("|");
 
         if (!userId || !planId) {
-          // Phải redirect khi lỗi, không dùng notFound()
           return res.redirect(
             `${FRONTEND_URL}/payment-failed?reason=invalid_order`
           );
         }
 
-        // SỬA LỖI 1 (ENUM):
-        // Chúng ta "dịch" 'type' ("USER") thành một 'paymentType' hợp lệ
-        // mà model 'Payment' cho phép.
-        //
-        // TÔI GIẢ ĐỊNH NÓ LÀ "SUBSCRIPTION".
-        // BẠN CÓ THỂ THAY ĐỔI GIÁ TRỊ NÀY NẾU ENUM CỦA BẠN LÀ KHÁC.
-        let paymentTypeForPaymentModel;
-        if (type === "USER" || type === "ARTIST") {
-          paymentTypeForPaymentModel = "SUBSCRIPTION"; // <-- GIẢ ĐỊNH
-        } else {
-          // Nếu 'type' là một giá trị khác, ta dùng chính nó
-          paymentTypeForPaymentModel = type;
-        }
+        await Promise.all([
+          await paymentService.createPayment({
+            userId: userId,
+            amount: result.amount.value,
+            method: "paypal",
+            status: "success",
+            paymentType: type.toUpperCase(),
+            transactionId: result.id,
+            currencyCode: "USD",
+            desciption: "Payment for " + type,
+            orderId: token,
+          }),
 
-        await paymentService.createPayment({
-          userId: userId,
-          amount: result.amount.value,
-          method: "paypal",
-          status: "success",
-          paymentType: paymentTypeForPaymentModel, // <-- Đã sửa
-          transactionId: result.id,
-          currencyCode: "USD",
-          desciption: "Payment for " + type, // Giữ "USER" trong mô tả là OK
-          orderId: token,
-        });
-
-        await subscriptionService.createSubscription({
-          userId,
-          planId,
-        });
+          await subscriptionService.createSubscription({
+            userId,
+            planId,
+            transactionId: result.id,
+          }),
+        ]);
 
         return res.redirect(`${FRONTEND_URL}/payment-success?token=${token}`);
       }

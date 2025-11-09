@@ -336,6 +336,9 @@ const updateArtist = async ({
   return artist;
 };
 
+
+
+
 export default {
   createArtist,
   updateArtist,

@@ -36,7 +36,7 @@ router.post(
         planId: id,
         userId,
         type,
-        paymentType: "subscription",
+        paymentType: "SUBSCRIPTION",
       },
       geo
     );

@@ -5,9 +5,14 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "dev": "nodemon ./bin/www --config  nodemon.json "
+    "dev": "nodemon ./bin/www --config  nodemon.json ",
+    "grpc:server": "node src/grpc/server.js",
+    "grpc:client": "node src/grpc/client.js",
+    "grpc:fuzz": "node src/grpc/fuzz_client.js"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.14.1",
+    "@grpc/proto-loader": "^0.8.0",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",

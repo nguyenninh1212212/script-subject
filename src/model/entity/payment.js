@@ -11,23 +11,23 @@ export default (sequelize, DataTypes) => {
       amount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-      }, // số tiền thanh toán
+      },
       method: {
         type: DataTypes.STRING,
         allowNull: false,
-      }, // ví dụ: "credit_card", "paypal", "momo", "zaloPay"
+      },
       status: {
         type: DataTypes.ENUM("pending", "success", "failed"),
         defaultValue: "pending",
       },
       transactionId: {
         type: DataTypes.STRING,
-      }, // id từ cổng thanh toán
+      },
       orderId: {
         type: DataTypes.STRING,
-      }, // id từ cổng thanh toán
+      },
       paymentType: {
-        type: DataTypes.ENUM("subscription", "album", "renewSubscription"),
+        type: DataTypes.ENUM("SUBSCRIPTION", "ALBUM", "RENEWSUBSCRIPTION"),
         allowNull: false,
       },
       desciption: {

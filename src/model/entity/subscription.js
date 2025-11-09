@@ -26,6 +26,10 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: false,
       },
+      transactionId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
     },
     {
       indexes: [
