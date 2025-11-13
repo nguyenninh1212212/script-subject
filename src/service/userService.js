@@ -90,7 +90,13 @@ const login = async ({ username, password }) => {
 
   user.refreshToken = refreshToken;
   await user.save();
-  return { token, refreshToken, name: user.name, artistId: artist?.id };
+  return {
+    token,
+    refreshToken,
+    name: user.name,
+    artistId: artist?.id,
+    userWallet: user.walletAddress,
+  };
 };
 
 const changeName = async ({ name, userId }) => {
@@ -157,6 +163,7 @@ const googleLogin = async ({ credential }) => {
     }
   }
 
+  const artist = await Artist.findOne({ where: { userId: user.id } });
   const roles = await user.getRoles();
   const roleNames = roles.map((r) => r.name);
 
@@ -175,7 +182,13 @@ const googleLogin = async ({ credential }) => {
   );
   user.refreshToken = refreshToken;
   await user.save();
-  return { token, refreshToken };
+  return {
+    token,
+    refreshToken,
+    name: user.name,
+    artistId: artist?.id,
+    userWallet: user?.walletAddress,
+  };
 };
 
 const refreshToken = async ({ refreshToken }) => {

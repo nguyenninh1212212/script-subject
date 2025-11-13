@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package nft;
+
+// =======================
+// === 1. DỊCH VỤ (SERVICE) ===
+// =======================
+// Định nghĩa tất cả các hàm mà NFT Service (Project 2) cung cấp
+service NftService {
+// Hàm tạo sự kiện (do P1 gọi)
+rpc CreateTicket (CreateTicketRequest) returns (CreateTicketResponse);
+
+// Hàm ghi lại log mua vé (do P1 gọi)
+rpc LogPurchase (LogPurchaseRequest) returns (LogPurchaseResponse);
+
+// Lấy danh sách vé đang bán (cho trang bán hàng, có phân trang)
+rpc GetActiveTickets (GetActiveTicketsRequest) returns (GetActiveTicketsResponse);
+
+// Lấy vé mà một user sở hữu (cho trang "Vé của tôi", có phân trang)
+rpc GetUserTickets (GetUserTicketsRequest) returns (GetUserTicketsResponse);
+
+rpc GetArtistTickets (GetArtistTicketsRequest) returns (GetArtistTicketsResponse);
+}
+
+// =======================
+// === 2. CÁC MESSAGE (TIN NHẮN) DÙNG CHUNG ===
+// =======================
+
+// Message tóm tắt thông tin SỰ KIỆN (Event)
+// Sẽ được dùng bởi GetActiveTickets và GetArtistTickets
+message EventSummary {
+string eventId = 1;      // ID (MongoDB _id)
+string artistId = 2;     // ID của Artist (để P1 tra cứu)
+string title = 3;
+string price = 4;
+string coverImage = 5;   // Link IPFS
+int32 maxSupply = 6;
+int32 minted_count = 7;
+string contractAddress = 8;
+string date = 9;
+string location = 10;
+string status =11;
+}
+
+// Message tóm tắt thông tin VÉ ĐÃ SỞ HỮU (Owned Ticket)
+// Sẽ được dùng bởi GetUserTickets
+message OwnedTicketSummary {
+string userTicketId = 1; // ID từ bảng UserNFT
+string tokenId = 2;       // Số vé on-chain (ví dụ: "101")
+EventSummary event = 3;    // Lồng thông tin sự kiện vào đây
+}
+
+// Message thông tin phân trang (dùng chung)
+message PaginationResponse {
+int32 totalItems = 1;
+int32 totalPages = 2;
+int32 currentPage = 3;
+}
+
+// =======================
+// === 3. CÁC MESSAGE CHO TỪNG HÀM ===
+// =======================
+
+// --- CreateTicket ---
+message CreateTicketRequest {
+string artistId = 1;
+string contractAddress = 2;
+string title = 3;
+string price = 4;
+int32 maxSupply = 5;
+int64 saleDeadline = 6; // UNIX timestamp (giây)
+string baseUri = 7;
+string coverImage = 8;
+string date = 9;
+string location = 10;
+}
+message CreateTicketResponse {
+string eventId = 1;
+string status = 2;
+}
+
+// --- LogPurchase ---
+message LogPurchaseRequest {
+string userId = 1;
+string eventId = 2;
+string tokenId = 3;
+string tx_hash = 4;
+}
+message LogPurchaseResponse {
+string userTicketId = 1;
+}
+
+// --- GetActiveTickets (Trang bán hàng) ---
+message GetActiveTicketsRequest {
+int32 page = 1;
+int32 limit = 2;
+}
+message GetActiveTicketsResponse {
+repeated EventSummary tickets = 1; // Mảng các sự kiện
+PaginationResponse pagination = 2;
+}
+
+// --- GetUserTickets (Trang "Vé của tôi") ---
+message GetUserTicketsRequest {
+string userId = 1;
+int32 page = 2;
+int32 limit = 3;
+}
+message GetUserTicketsResponse {
+repeated OwnedTicketSummary tickets = 1; // Mảng các vé đã sở hữu
+PaginationResponse pagination = 2;
+}
+
+// --- GetArtistTickets (Trang "Dashboard Artist") ---
+message GetArtistTicketsRequest {
+string artistId = 1;
+int32 page = 2;
+int32 limit = 3;
+}
+message GetArtistTicketsResponse {
+repeated EventSummary tickets = 1; // Mảng các sự kiện (giống GetActive)
+PaginationResponse pagination = 2;
+}

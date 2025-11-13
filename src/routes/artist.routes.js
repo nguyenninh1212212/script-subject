@@ -19,9 +19,12 @@ router.post(
     // #swagger.tags = ['Artist']
 
     const userId = req.user.sub;
-    const files = req.files;
-    const avatarFile = files.avatarFile[0];
-    const bannerFile = files.bannerFile[0];
+    const files = req.files || {};
+
+    // Cho phép undefined
+    const avatarFile = files.avatarFile?.[0];
+    const bannerFile = files.bannerFile?.[0];
+
     const { stageName, bio, youtubeUrl, facebookUrl, instagramUrl } = req.body;
 
     await artistService.createArtist({
@@ -32,6 +35,7 @@ router.post(
       bannerFile,
       socialMedia: { youtubeUrl, facebookUrl, instagramUrl },
     });
+
     message(res, "Artist created successfully!! ✅", 201);
   })
 );

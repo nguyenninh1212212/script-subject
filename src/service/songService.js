@@ -19,6 +19,8 @@ import sequelize from "sequelize";
 import { MouthlySongView } from "../model/entity/index.js";
 import { transformPropertyInList } from "../util/help.js";
 
+import { deleteDataElastic, addDataElastic } from "../service/searchService.js";
+
 // Hàm này dường như bị lỗi và không được dùng, bạn nên xem xét xóa
 
 const createSong = async ({ title, userId, songFile, coverFile }) => {
@@ -42,13 +44,20 @@ const createSong = async ({ title, userId, songFile, coverFile }) => {
     getAudioDurationFromBuffer(songFile.buffer, songFile.mimetype),
   ]);
 
-  return await Song.create({
+  const data = await Song.create({
     title,
     artistId: artistId.id,
     duration,
     song: songUpload.public_id,
     coverImage: coverUpload.public_id,
   });
+
+  const doc = {
+    title: data.title,
+    coverImage: data.coverImage,
+  };
+
+  addDataElastic(doc, data.id, "songs");
 };
 
 // =================================================================
@@ -256,6 +265,7 @@ const deleteSong = async (songId) => {
     await deleteFromCloudinary(song.coverImage),
     await deleteFromCloudinary(song.song),
   ]);
+  deleteDataElastic(song.id, "songs");
   await Song.destroy({
     where: { id: songId },
   });

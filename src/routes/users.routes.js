@@ -25,6 +25,7 @@ router.post(
         name: token.name || "Anonymous",
         artistId: token.artistId || null,
         token: token.token,
+        userWallet: token.userWallet,
       },
     });
   })
@@ -96,13 +97,20 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { credential } = req.body;
-    const result = await userService.googleLogin({ credential });
-    res.cookie("refreshToken", result.refreshToken, {
+    const token = await userService.googleLogin({ credential });
+    res.cookie("refreshToken", token.refreshToken, {
       httpOnly: true,
       secure: process.env.IS_DEV === "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    success(res, result.token);
+    success(res, {
+      user: {
+        name: token.name || "Anonymous",
+        artistId: token.artistId || null,
+        token: token.token,
+        userWallet: token.userWallet,
+      },
+    });
   })
 );
 

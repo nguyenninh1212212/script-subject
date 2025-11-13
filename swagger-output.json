@@ -1494,34 +1494,29 @@
         }
       }
     },
-    "/api/nft/mint-ticket": {
-      "post": {
+    "/api/search/": {
+      "get": {
         "tags": [
-          "NFT"
+          "search"
         ],
         "description": "",
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "userAddress": {
-                    "example": "any"
-                  }
-                }
-              }
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
           }
         }
       }
     },
-    "/api/nft/set-fee": {
+    "/api/nfts/set-fee": {
       "post": {
         "tags": [
           "NFT"
@@ -1548,7 +1543,7 @@
         }
       }
     },
-    "/api/nft/set-wallet": {
+    "/api/nfts/set-wallet": {
       "post": {
         "tags": [
           "NFT"
@@ -1571,6 +1566,104 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/nfts/create-ticket": {
+      "post": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "example": "any"
+                  },
+                  "date": {
+                    "example": "any"
+                  },
+                  "location": {
+                    "example": "any"
+                  },
+                  "price": {
+                    "example": "any"
+                  },
+                  "maxSupply": {
+                    "example": "any"
+                  },
+                  "saleDeadline": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nfts/log-purchase": {
+      "post": {
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "eventId": {
+                    "example": "any"
+                  },
+                  "tokenId": {
+                    "example": "any"
+                  },
+                  "txHash": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nfts": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }

@@ -13,8 +13,6 @@ import PlaylistFactory from "./playlist.js";
 import SubscriptionPlanFactory from "./subscriptionPlan.js";
 import AdsFactory from "./ads.js";
 import MouthlySongViewFactory from "./mouthlySongView.js";
-import NFTTicketFactory from "./nftTicket.js";
-import UserNFTFactory from "./userTicket.js";
 
 // =======================
 // Khởi tạo Models
@@ -33,8 +31,6 @@ const SubscriptionPlan = SubscriptionPlanFactory(
   sequelize,
   Sequelize.DataTypes
 );
-const NFTTicket = NFTTicketFactory(sequelize, Sequelize.DataTypes);
-const UserNFT = UserNFTFactory(sequelize, Sequelize.DataTypes);
 
 // =======================
 // Quan hệ User <-> Role (N-N)
@@ -137,30 +133,6 @@ Album.belongsToMany(User, { through: "FavoriteAlbum", as: "likedByUsers" });
 // NFT user (User <-> NFT) (N-N)
 // Dùng bảng "UserNFT" làm bảng trung gian
 // =======================
-User.belongsToMany(NFTTicket, {
-  through: UserNFT,
-  as: "ownedTickets", // User "sở hữu" vé
-  foreignKey: "userId",
-});
-NFTTicket.belongsToMany(User, {
-  through: UserNFT,
-  as: "owners", // Vé có nhiều "chủ sở hữu"
-  foreignKey: "nftTicketId",
-});
-// =======================
-// NFT artist (artist <-> NFT) (N-N)
-// =======================
-Artist.hasMany(NFTTicket, {
-  foreignKey: "artistId",
-  as: "createdTickets",
-});
-NFTTicket.belongsTo(Artist, {
-  foreignKey: "artistId",
-  as: "creator",
-});
-// =======================
-// Export tất cả models
-// =======================
 export {
   sequelize,
   User,
@@ -174,6 +146,4 @@ export {
   Playlist,
   Ads,
   MouthlySongView,
-  UserNFT,
-  NFTTicket,
 };

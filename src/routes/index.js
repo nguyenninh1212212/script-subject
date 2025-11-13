@@ -11,6 +11,7 @@ import paypalRoutes from "./webhook/paypal.routes.js";
 import adsRoutes from "./ads.routes.js";
 import homeRouter from "./home.routes.js";
 import nftRouter from "./nft.routes.js";
+import searchRoutes from "./search.routes.js";
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ router.use("/api/songs", songRoutes);
 router.use("/api/playlists", playlistRoutes);
 router.use("/api/plans", planRoutes);
 router.use("/api/paypal", paypalRoutes); // thêm route paypal
-router.use("/api/nft", nftRouter);
+router.use("/api/search", searchRoutes); // thêm route paypal
+router.use("/api/nfts", nftRouter);
 
 export default router;

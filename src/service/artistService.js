@@ -20,6 +20,7 @@ import {
   deleteFromCloudinary,
 } from "../util/cloudinary.js";
 import sequelize from "sequelize";
+import { addDataElastic } from "./searchService.js";
 
 const createArtist = async ({
   userId,
@@ -52,22 +53,16 @@ const createArtist = async ({
   const exist = await Artist.findOne({
     where: { userId },
   });
-  console.log("🚀 ~ createArtist ~ exist:", exist);
 
   if (exist) {
     alreadyExist("Artist");
   }
 
   const [avatarUpload, bannerUpload] = await Promise.all([
-    avatarFile
-      ? uploadFromBuffer(avatarFile.buffer, "avatars")
-      : Promise.resolve(null),
-    bannerFile
-      ? uploadFromBuffer(bannerFile.buffer, "banner")
-      : Promise.resolve(null),
+    avatarFile?.buffer ? uploadFromBuffer(avatarFile.buffer, "avatars") : null,
+    bannerFile?.buffer ? uploadFromBuffer(bannerFile.buffer, "banner") : null,
   ]);
-
-  await Artist.create({
+  const newArtist = await Artist.create({
     userId,
     stageName,
     bio,
@@ -77,6 +72,12 @@ const createArtist = async ({
     facebookUrl,
     instagramUrl,
   });
+  const doc = {
+    name: newArtist.stageName,
+    avatarUrl: newArtist.avatarUrl,
+  };
+
+  addDataElastic(doc, newArtist.id, "artists");
 };
 
 const getArtists = async ({ page = 1, size = 10 }) => {
@@ -335,9 +336,6 @@ const updateArtist = async ({
 
   return artist;
 };
-
-
-
 
 export default {
   createArtist,
