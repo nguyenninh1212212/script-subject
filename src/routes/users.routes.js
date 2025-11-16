@@ -25,7 +25,7 @@ router.post(
         name: token.name || "Anonymous",
         artistId: token.artistId || null,
         token: token.token,
-        userWallet: token.userWallet,
+        walletAddress: token.walletAddress,
       },
     });
   })
@@ -91,6 +91,17 @@ router.post(
     message(res, "Logged out successfully");
   })
 );
+router.post(
+  "/add-wallet",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['User']
+    const { walletAddress } = req.body;
+    const userId = req.user.sub;
+    await userService.addWalletAddress({ walletAddress, userId });
+    message(res, "Logged out successfully");
+  })
+);
 
 router.post(
   "/google",
@@ -108,7 +119,7 @@ router.post(
         name: token.name || "Anonymous",
         artistId: token.artistId || null,
         token: token.token,
-        userWallet: token.userWallet,
+        userWallet: token.walletAddress,
       },
     });
   })

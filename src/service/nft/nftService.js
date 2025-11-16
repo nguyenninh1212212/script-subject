@@ -1,105 +1,114 @@
 import nftClient from "./nftServiceClient.js"; // gRPC Client của Project 2
-import {uploadFileToIPFS,uploadJSONToIPFS} from "../ipfsService.js"; // Service của Project 1
-import { Artist } from "../../model/entity/index.js"; // Model của Project 1
+
+import { Artist, User } from "../../model/entity/index.js"; // Model của Project 1
 import subService from "../subscriptionService.js"; // Service của Project 1
 import { ethers } from "ethers";
 import factoryAbi from "../../abi/TicketFactory.json" with { type: "json" };
-import { badRequest, notFound } from "../../middleware/errorHandler.js";
+import { alreadyExist, badRequest, notFound, unauthorized } from "../../middleware/errorHandler.js";
 
+import dotenv from "dotenv";
+dotenv.config()
+
+
+// --- 1. KHỞI TẠO ETHERS (Đã có) ---
 const RPC_URL = process.env.NFT_URL;
-const CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS;
-const PRIVATE_KEY = process.env.NFT_PRIVATE_KEY;
+const CONTRACT_ADDRESS = process.env.NFT_CONTRACT_ADDRESS; // Đây là địa chỉ TicketFactory
+const PRIVATE_KEY = process.env.NFT_PRIVATE_KEY; // Đây là Private Key của Admin/Platform
+// 3️⃣ Khởi tạo factory contract với wallet
 
 if (!PRIVATE_KEY || !CONTRACT_ADDRESS || !RPC_URL) {
-    badRequest("NFT configuration is missing");
-    process.exit(1);
+  badRequest("NFT configuration is missing");
+  // (Lưu ý: throw error sẽ tốt hơn là gọi process.exit(1) ở đây)
+  throw new Error("Missing NFT Ethers configuration in .env");
 }
-const provider=new ethers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const contract = new ethers.Contract(CONTRACT_ADDRESS, factoryAbi.abi, wallet);
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+const signer = new ethers.Wallet(PRIVATE_KEY, provider);
+const factoryContract = new ethers.Contract(CONTRACT_ADDRESS, factoryAbi.abi, signer);
+
+console.log(`✅ [P1 Service] Đã kết nối Ethers với Factory: ${CONTRACT_ADDRESS}`);
+
+// --- 2. HÀM TẠO CONTRACT CHO ARTIST (ĐÃ THÊM VÀO) ---
+
+/**
+ * Gọi Smart Contract 'TicketFactory' để tạo (deploy) một contract 'EventTicket' mới.
+ * @param {string} artistWalletAddress - Địa chỉ ví MetaMask (EOA) của nghệ sĩ
+ * @returns {Promise<string>} - Địa chỉ contract mới (0x...)
+ */
 
 
-
-
-// API: POST /api/tickets/create
+// --- 3. HÀM TẠO VÉ (ĐÃ SỬA LỖI) ---
 const createTicket = async ({
-  coverFile,
+  baseUrl,
+  contractAddress,
   userId,
-  title,
   date,
-  location,
-  price,
-  maxSupply,
   saleDeadline,
-}) => {
-  const artist = await Artist.findOne({ where: { userId } });
-  if (!artist) return notFound("Artist");
-  const isActive = await subService.checkSubscription({ userId,type:"ARTIST" });
-  if (!isActive)
-    badRequest("Your artist subscription expired");
-
-  if (!coverFile) {
-    badRequest("File cannot empty")
-  }
-  // 2. Xử lý IPFS (Project 1 làm)
-  const imageCID =  await uploadFileToIPFS(
-    coverFile.buffer,
-    coverFile.originalname
-  );
-  const imageURI = `ipfs://${imageCID}`;
-  const metadata = { name: title, description: `...`, image: imageURI };
-  const metadataCID = await uploadJSONToIPFS(metadata);
-  const baseURI = `ipfs://${metadataCID}`;
-
-  const saleDeadlineDate = new Date(saleDeadline);
-if (isNaN(saleDeadlineDate.getTime())) {
-  throw badRequest("saleDeadline invalid format, must be ISO string or valid Date");
-}
-
-  // 3. GỌI gRPC ĐẾN PROJECT 2
-const grpcRequest = {
-  artistId: artist.id,
-  contract_address: process.env.NFT_CONTRACT_ADDRESS,
-  title,
   price,
-  maxSupply: parseInt(maxSupply),
-  saleDeadline: Math.floor(new Date(saleDeadline).getTime() / 1000),
-  baseUri: baseURI,
-  coverImage: imageURI,
-  date,
   location,
-};
+  title,
+  maxSupply,
+  coverImage
+}) => {
+  const artist = await Artist.findOne({
+    where: { userId },
+    include: { model: User, as: "owner", attributes: ["walletAddress"] },
+  });
 
+  if (!artist) notFound("Artist");
+  if (!artist.owner.walletAddress) badRequest("Wallet required");
+  if (!artist) return notFound("Artist");
+  const isActive = await subService.checkSubscription({ userId, type: "ARTIST" });
+  if (!isActive) badRequest("Your artist subscription expired");
 
-const grpcResponse = await new Promise((resolve, reject) => {
+  const grpcRequest = {
+    artistId: artist.id,
+    contractAddress: contractAddress,
+    baseUri: baseUrl,
+    saleDeadline: saleDeadline,
+    date: date,
+    location: location,
+    price: price,
+    title: title,
+    maxSupply: maxSupply,
+    coverImage: coverImage
+  };
+
+  const grpcResponse = await new Promise((resolve, reject) => {
     nftClient.CreateTicket(grpcRequest, (err, res) =>
       err ? reject(err) : resolve(res)
     );
   });
+
   return {
     message: "Step 1 OK. Please sign transaction.",
-    eventId: grpcResponse.event_id, // _id từ MongoDB
-    contractAddress: process.env.NFT_CONTRACT_ADDRESS,
-    price: price,
-    maxSupply: maxSupply,
+    event_id: grpcResponse.event_id, // _id từ MongoDB
+    contractAddress: artist.contractAddress, // <-- ĐÃ SỬA
+    baseURI: baseUrl,
     saleDeadline: saleDeadline,
-    baseURI: baseURI,
-  };
+    price: price,
+    location: location,
+    title: title,
+    maxSupply: maxSupply,
+  }
 };
 
+// --- 4. CÁC HÀM CÒN LẠI (ĐÃ SỬA LỖI) ---
 const logPurchase = async ({ userId, eventId, tokenId, txHash }) => {
-    const grpcRequest = {
-      user_id: userId,
-      event_id: eventId,
-      token_id: tokenId,
-      tx_hash: txHash,
-    };
-    const grpcResponse = await new Promise((resolve, reject) => {
-      nftClient.LogPurchase(grpcRequest, (err, res) =>
-        err ? reject(err) : resolve(res)
-      );
-    });
-    return grpcResponse;
+  const existUser = await User.count({ where: { id: userId } });
+  if (existUser == 0) unauthorized();
+  const grpcRequest = {
+    userId: userId,
+    eventId: eventId,
+    tokenId: tokenId,
+    tx_hash: txHash,
+  };
+  console.log("🚀 ~ logPurchase ~ grpcRequest:", grpcRequest)
+  const grpcResponse = await new Promise((resolve, reject) => {
+    nftClient.LogPurchase(grpcRequest, (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+  return grpcResponse;
 };
 
 const setFee = async (newFee) => {
@@ -111,33 +120,189 @@ const setFee = async (newFee) => {
   ) {
     badRequest("Invalid fee percentage (must be 0-100)");
   }
-  const tx = await contract.setPlatformFee(newFee);
+  // Dùng 'factoryContract' đã khởi tạo
+  const tx = await factoryContract.setPlatformFee(newFee);
   await tx.wait();
+  return { message: "Fee updated", newFee: newFee };
 };
 
-const setWaller = async (newWallet) => {
-  if (!ethers.utils.isAddress(newWallet)) {
+// SỬA LỖI CHÍNH TẢ: setWaller -> setWallet
+const setWallet = async (newWallet) => {
+  if (!ethers.isAddress(newWallet)) {
     badRequest("Invalid wallet address");
   }
   const tx = await factoryContract.setPlatformWallet(newWallet);
   await tx.wait();
+  return { message: "Wallet updated", newWallet: newWallet };
 };
 
 const getTickets = async ({ page, limit }) => {
-  const grpcRequest = {
-    page: page,
-    limit: limit
-  };
-  
+  const grpcRequest = { page, limit };
+
+  // 1️⃣ Lấy ticket từ gRPC
   const grpcResponse = await new Promise((resolve, reject) => {
     nftClient.GetActiveTickets(grpcRequest, (err, res) =>
       err ? reject(err) : resolve(res)
     );
   });
-    console.log("🚀 ~ getTickets ~ grpcResponse:", grpcResponse)
-  
-  return grpcResponse; 
+
+  // 2️⃣ Lấy danh sách artistId duy nhất
+  const artistIds = [...new Set(grpcResponse.tickets.map(t => t.artistId))];
+  const artists = await Artist.findAll({
+    where: { id: artistIds },
+    attributes: ["id", "stageName"],
+  });
+  const artistMap = {};
+  artists.forEach(a => {
+    artistMap[a.id] = a.stageName;
+  });
+
+  // 3️⃣ Fetch metadata từ IPFS cho mỗi ticket
+  const ticketsWithMetadata = await Promise.all(
+    grpcResponse.tickets.map(async (ticket) => {
+      return {
+        ...ticket,
+        stageName: artistMap[ticket.artistId] || null,
+      };
+    })
+  );
+
+  return {
+    ...grpcResponse,
+    tickets: ticketsWithMetadata,
+  };
+};
+const getMyTickets = async ({ page, limit, userId }) => {
+  const grpcRequest = { page, limit, userId };
+
+  // 1️⃣ Lấy ticket từ gRPC
+  const grpcResponse = await new Promise((resolve, reject) => {
+    nftClient.GetUserTickets(grpcRequest, (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+
+  // 2️⃣ Lấy danh sách artistId duy nhất
+  const artistIds = [...new Set(grpcResponse.tickets.map(t => t.artistId))];
+  const artists = await Artist.findAll({
+    where: { id: artistIds },
+    attributes: ["id", "stageName"],
+  });
+  const artistMap = {};
+  artists.forEach(a => {
+    artistMap[a.id] = a.stageName;
+  });
+
+  // 3️⃣ Fetch metadata từ IPFS cho mỗi ticket
+  const ticketsWithMetadata = await Promise.all(
+    grpcResponse.tickets.map(async (ticket) => {
+      return {
+        ...ticket,
+        stageName: artistMap[ticket.artistId] || null,
+      };
+    })
+  );
+
+  return {
+    ...grpcResponse,
+    tickets: ticketsWithMetadata,
+  };
+};
+
+const listResellTicket = async ({ userTicketId, sellerId, price }) => {
+  if (!userTicketId || !sellerId || !price) badRequest("Missing params");
+
+  const grpcRequest = { userTicketId, sellerId, price };
+  const grpcResponse = await new Promise((resolve, reject) => {
+    nftClient.CreateResellTicket(grpcRequest, (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+
+  return {
+    message: "Ticket listed for resale",
+    resellTicketId: grpcResponse.resellTicketId,
+    status: grpcResponse.status,
+  };
+};
+const getResellTickets = async ({ page = 1, limit = 10 }) => {
+  const grpcRequest = { page, limit };
+
+  const grpcResponse = await new Promise((resolve, reject) => {
+    nftClient.GetResellTickets(grpcRequest, (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+
+  // map thêm thông tin artist nếu muốn
+  const artistIds = [...new Set(grpcResponse.tickets.map(t => t.event.artistId))];
+  const artists = await Artist.findAll({
+    where: { id: artistIds },
+    attributes: ["id", "stageName"],
+  });
+  const artistMap = {};
+  artists.forEach(a => artistMap[a.id] = a.stageName);
+
+  const ticketsWithArtist = grpcResponse.tickets.map(t => ({
+    ...t,
+    stageName: artistMap[t.event.artistId] || null,
+  }));
+
+  return { ...grpcResponse, tickets: ticketsWithArtist };
+};
+const buyResellTicket = async ({ resellTicketId, buyerId }) => {
+  if (!resellTicketId || !buyerId) badRequest("Missing params");
+
+  const grpcRequest = { resellTicketId, buyerId };
+  const grpcResponse = await new Promise((resolve, reject) => {
+    nftClient.BuyResellTicket(grpcRequest, (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+
+
+  return {
+    message: "Ticket purchased from resale",
+    resellTicketId: grpcResponse.resellTicketId,
+    oldOwnerId: grpcResponse.oldOwnerId,
+    newOwnerId: grpcResponse.newOwnerId,
+    price: grpcResponse.price,
+  };
 };
 
 
-export { createTicket, logPurchase, setFee, setWaller,getTickets };
+const updateTicketStatusClient = async ({ eventId, status ,userId}) => {
+  const artist = await Artist.findOne({where :{userId :userId},attributes :["id"]});
+  if (!artist) notFound("Artist")
+  return new Promise((resolve, reject) => {
+    nftClient.UpdateTicketStatus({ eventId, status,artistId:artist.id }, (err, res) => {
+      if (err) return reject(err);
+      resolve(res); // { eventId, oldStatus, newStatus }
+    });
+  });
+}
+
+// ==============================
+// Client gọi UpdateResellTickets
+// ==============================
+const updateResellTicketClient = async ({ sellerId,  resellId }) => {
+  return new Promise((resolve, reject) => {
+    nftClient.UpdateResellTickets({ sellerId,  resellId }, (err, res) => {
+      if (err) return reject(err);
+      resolve(res); // { message: "SUCCESS" }
+    });
+  });
+}
+
+
+
+export {
+  createTicket,
+  logPurchase,
+  setFee,
+  setWallet, // Sửa lỗi chính tả
+  getTickets,
+  getMyTickets,
+  listResellTicket,
+  getResellTickets, buyResellTicket, updateTicketStatusClient, updateResellTicketClient
+};

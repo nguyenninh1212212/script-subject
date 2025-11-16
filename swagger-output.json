@@ -1587,22 +1587,31 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "title": {
+                  "baseUrl": {
+                    "example": "any"
+                  },
+                  "contractAddress": {
                     "example": "any"
                   },
                   "date": {
                     "example": "any"
                   },
-                  "location": {
+                  "saleDeadline": {
                     "example": "any"
                   },
                   "price": {
                     "example": "any"
                   },
+                  "location": {
+                    "example": "any"
+                  },
+                  "title": {
+                    "example": "any"
+                  },
                   "maxSupply": {
                     "example": "any"
                   },
-                  "saleDeadline": {
+                  "coverImage": {
                     "example": "any"
                   }
                 }
@@ -1614,6 +1623,9 @@
     },
     "/api/nfts/log-purchase": {
       "post": {
+        "tags": [
+          "NFT"
+        ],
         "description": "",
         "responses": {
           "401": {
@@ -1642,8 +1654,41 @@
         }
       }
     },
+    "/api/nfts/update-status/{id}": {
+      "post": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/nfts": {
       "get": {
+        "tags": [
+          "NFT"
+        ],
         "description": "",
         "parameters": [
           {
@@ -1656,6 +1701,142 @@
           {
             "name": "limit",
             "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/nfts/my-ticket": {
+      "get": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/nfts/resell": {
+      "post": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userTicketId": {
+                    "example": "any"
+                  },
+                  "price": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/nfts/resell/buy": {
+      "post": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resellTicketId": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nfts/resell/{resellId}": {
+      "patch": {
+        "tags": [
+          "NFT"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "resellId",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string"
             }

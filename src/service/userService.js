@@ -95,7 +95,9 @@ const login = async ({ username, password }) => {
     refreshToken,
     name: user.name,
     artistId: artist?.id,
-    userWallet: user.walletAddress,
+    walletAddress: user?.walletAddress
+      ? "0" + user.walletAddress.slice(1)
+      : null,
   };
 };
 
@@ -187,7 +189,9 @@ const googleLogin = async ({ credential }) => {
     refreshToken,
     name: user.name,
     artistId: artist?.id,
-    userWallet: user?.walletAddress,
+    walletAddress: user?.walletAddress
+      ? "0" + user.walletAddress.slice(1)
+      : null,
   };
 };
 
@@ -238,8 +242,20 @@ const refreshToken = async ({ refreshToken }) => {
       token: newAccessToken,
       name: user.name || "Anonymous",
       artistId: artist?.id || null,
+      walletAddress: user?.walletAddress
+        ? "0" + user.walletAddress.slice(1)
+        : null,
     },
   };
+};
+
+const addWalletAddress = async ({ walletAddress, userId }) => {
+  console.log("🚀 ~ addWalletAddress ~ walletAddress:", walletAddress);
+
+  const user = await User.findByPk(userId);
+  if (!user) notFound("User");
+
+  await user.update({ walletAddress });
 };
 
 export default {
@@ -251,4 +267,5 @@ export default {
   googleLogin,
   refreshToken,
   changeName,
+  addWalletAddress,
 };

@@ -25,8 +25,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 const nftProto = grpc.loadPackageDefinition(packageDefinition).nft;
 
-const GRPC_SERVER_ADDRESS =
-  process.env.NFT_SERVICE_GRPC_URL || "localhost:50052";
+const GRPC_SERVER_ADDRESS = process.env.GRPC_ADDR;
 
 const nftClient = new nftProto.NftService(
   GRPC_SERVER_ADDRESS,
