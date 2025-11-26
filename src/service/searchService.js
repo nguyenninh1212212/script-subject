@@ -2,59 +2,117 @@ import { Client } from "@elastic/elasticsearch";
 import { getUrlCloudinary } from "../util/cloudinary.js";
 import { transformPropertyInList } from "../util/help.js";
 import dotenv from "dotenv";
+import clientAudio from "../grpc/audioSearch.js";
+import { promisify } from "util";
+import { Song } from "../model/entity/index.js";
+import redis from "../config/redis.config.js";
+import { normalizeTextForAutocomplete } from "../util/help.js";
+
 dotenv.config();
 
+const AUTOCOMPLETE_CACHE_TTL = 3000;
+const SEARCH_CACHE_TTL = 3000;
+
 const client = new Client({
-  node: process.env.ELASTIC_URL, // Đảm bảo ES đang chạy ở đây
+  node: process.env.ELASTIC_URL,
 });
-const searchData = async (queryText) => {
+const { keys, redisClient, redisSub, getOrSetCache, safeParse, safeStringify } =
+  redis;
+
+const searchData = async (queryText, { from = 0, size = 30 } = {}) => {
   try {
-    const indexes = ["artists", "songs"];
-    const existingIndexes = [];
+    const normalizedQuery = normalizeTextForAutocomplete(queryText);
+    const cacheKey = keys.search(`${normalizedQuery}:${from}:${size}`);
+    return getOrSetCache(
+      cacheKey,
+      async () => {
+        const indexes = ["artists", "songs"];
+        const existingIndexes = [];
 
-    // Kiểm tra xem index nào đang tồn tại
-    for (const index of indexes) {
-      const exists = await client.indices.exists({ index });
-      if (exists) existingIndexes.push(index);
-    }
+        for (const index of indexes) {
+          const exists = await client.indices.exists({ index });
+          console.log("🚀 ~ searchData ~ exists:", exists);
+          if (exists) existingIndexes.push(index);
+        }
 
-    // Nếu không có index nào -> trả về rỗng
-    if (existingIndexes.length === 0) {
-      return { artists: [], songs: [] };
-    }
+        if (existingIndexes.length === 0) return { artists: [], songs: [] };
 
-    // Tìm kiếm trên tất cả index có sẵn
-    const response = await client.search({
-      index: existingIndexes,
-      query: {
-        multi_match: {
-          query: queryText,
-          fields: ["title", "name"], // 'title' cho songs, 'name' cho artists
-          fuzziness: "AUTO",
-        },
+        const response = await client.search({
+          index: existingIndexes,
+          from,
+          size,
+          query: {
+            bool: {
+              should: [
+                // Tìm kiếm chính xác (boost cao nhất)
+                {
+                  multi_match: {
+                    query: normalizedQuery,
+                    fields: ["name^3", "title^3", "autocomplete^2"],
+                    type: "phrase",
+                    boost: 3,
+                  },
+                },
+                // Tìm kiếm wildcard - giống LIKE '%keyword%'
+                {
+                  multi_match: {
+                    query: `*${normalizedQuery}*`,
+                    fields: ["name.keyword", "title.keyword"],
+                    boost: 2,
+                  },
+                },
+                // Tìm kiếm prefix - giống LIKE 'keyword%'
+                {
+                  multi_match: {
+                    query: normalizedQuery,
+                    fields: ["name", "title", "autocomplete"],
+                    type: "phrase_prefix",
+                    boost: 1.5,
+                  },
+                },
+                // Tìm kiếm với fuzziness
+                {
+                  multi_match: {
+                    query: normalizedQuery,
+                    fields: ["name", "title", "autocomplete"],
+                    fuzziness: "AUTO",
+                    operator: "or", // Đổi thành "or" để linh hoạt hơn
+                    boost: 1,
+                  },
+                },
+              ],
+              minimum_should_match: 1,
+            },
+          },
+        });
+
+        console.log("🚀 ~ searchData ~ response:", response);
+
+        let artists = [];
+        let songs = [];
+
+        for (const hit of response.hits?.hits || []) {
+          const doc = { id: hit._id, ...hit._source };
+          if (hit._index === "artists") artists.push(doc);
+          else if (hit._index === "songs") songs.push(doc);
+        }
+
+        // --- Transform URL ---
+        [songs, artists] = await Promise.all([
+          transformPropertyInList(songs, ["coverImage"], getUrlCloudinary),
+          transformPropertyInList(artists, ["avatarUrl"], getUrlCloudinary),
+        ]);
+
+        const result = { artists, songs };
+
+        redisClient.set(cacheKey, safeStringify(result), {
+          EX: SEARCH_CACHE_TTL,
+        });
+
+        return result;
       },
-    });
-
-    // Gom kết quả theo index
-    let artists = [];
-    let songs = [];
-
-    for (const hit of response.hits?.hits || []) {
-      const doc = { id: hit._id, ...hit._source }; // thêm id từ Elasticsearch
-      if (hit._index === "artists") {
-        artists.push(doc);
-      } else if (hit._index === "songs") {
-        songs.push(doc);
-      }
-    }
-
-    // Transform coverImage / avatarUrl cùng lúc
-    [songs, artists] = await Promise.all([
-      transformPropertyInList(songs, ["coverImage"], getUrlCloudinary),
-      transformPropertyInList(artists, ["avatarUrl"], getUrlCloudinary),
-    ]);
-
-    return { artists, songs };
+      3600
+    );
   } catch (error) {
     console.error("❌ Lỗi khi tìm kiếm:", error.message);
     return { artists: [], songs: [] };
@@ -80,10 +138,9 @@ const deleteDataElastic = async (id, index) => {
     const response = await client.delete({
       index: index,
       id: id,
-      refresh: "wait_for", // Đảm bảo xóa xong là có hiệu lực ngay
+      refresh: "wait_for",
     });
 
-    console.log(`Xóa tài liệu ID: ${id} thành công!`, response);
     return response;
   } catch (error) {
     if (error.statusCode === 404) {
@@ -94,4 +151,66 @@ const deleteDataElastic = async (id, index) => {
   }
 };
 
-export { searchData, addDataElastic, deleteDataElastic };
+const searchAudio = async (audioFile) => {
+  const request = { audio: audioFile.buffer };
+  const SearchSongAsync = promisify(clientAudio.SearchSong.bind(clientAudio));
+  const song = await SearchSongAsync(request).catch((error) => {
+    console.error("Error embedding song:", error);
+  });
+
+  if (!song) return null;
+
+  const data = await Song.findByPk(song.songId, {
+    attributes: ["title", "id", "coverImage"],
+  });
+  if (!data) return null;
+
+  data.coverImage = data?.coverImage
+    ? await getUrlCloudinary(data.coverImage)
+    : null;
+
+  const key = redis.keys.waveform(song.songId);
+
+  return redis.getOrSetCache(key, async () => data);
+};
+
+const autocomplete = async (q, size = 20) => {
+  const normalized = q.trim().toLowerCase();
+  const key = keys.autocomplete(normalized + ":" + size);
+  const cached = await redisClient.get(key);
+  if (cached) return safeParse(cached);
+
+  const indexes = ["artists", "songs"];
+
+  const resp = await client.search({
+    index: indexes.join(","),
+    size,
+    query: {
+      match_phrase_prefix: {
+        autocomplete: normalized,
+      },
+    },
+    _source: ["title", "name", "coverImage", "autocomplete"], // các field cần
+  });
+
+  // Map kết quả
+  const suggestions = resp.hits.hits.map((h) => ({
+    id: h._id,
+    ...h._source,
+  }));
+
+  // Lưu vào Redis
+  await redisClient.set(key, safeStringify(suggestions), {
+    EX: AUTOCOMPLETE_CACHE_TTL,
+  });
+
+  return suggestions;
+};
+
+export {
+  searchData,
+  addDataElastic,
+  deleteDataElastic,
+  searchAudio,
+  autocomplete,
+};

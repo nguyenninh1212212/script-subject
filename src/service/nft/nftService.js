@@ -300,7 +300,7 @@ export {
   createTicket,
   logPurchase,
   setFee,
-  setWallet, // Sửa lỗi chính tả
+  setWallet, 
   getTickets,
   getMyTickets,
   listResellTicket,

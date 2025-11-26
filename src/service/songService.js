@@ -1,4 +1,11 @@
-import { Song, Album, Artist, User } from "../model/entity/index.js";
+import {
+  Song,
+  Album,
+  Artist,
+  User,
+  Subscription,
+  SubscriptionPlan,
+} from "../model/entity/index.js";
 import {
   notFound,
   badRequest,
@@ -14,99 +21,154 @@ import {
 } from "../util/cloudinary.js";
 import { getAudioDurationFromBuffer } from "../util/getAudioDuration.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import sequelize from "sequelize";
 import { MouthlySongView } from "../model/entity/index.js";
-import { transformPropertyInList } from "../util/help.js";
-
-import { deleteDataElastic, addDataElastic } from "../service/searchService.js";
-
-// Hàm này dường như bị lỗi và không được dùng, bạn nên xem xét xóa
+import {
+  normalizeTextForAutocomplete,
+  transformPropertyInList,
+} from "../util/help.js";
+import adudioClient from "../grpc/audioSearch.js";
+import redis from "../config/redis.config.js";
+import { sendMessage } from "../config/rabitmq.config.js";
 
 const createSong = async ({ title, userId, songFile, coverFile }) => {
-  const artistId = await Artist.findOne({
+  const artist = await Artist.findOne({
     where: { userId },
-    arttibutes: ["id"],
+    include: [
+      {
+        model: User,
+        attributes: ["id", "email"],
+        as: "owner",
+        required: true,
+        include: [
+          {
+            model: Subscription,
+            as: "subscriptions",
+            required: true,
+            where: { userId },
+            include: [
+              {
+                model: SubscriptionPlan,
+                as: "plan",
+                required: true,
+                where: { type: "ARTIST" },
+                attributes: ["id", "name", "type", "duration"],
+              },
+            ],
+          },
+        ],
+      },
+    ],
   });
 
-  if (!artistId) notFound("Artist profile not found");
+  if (!artist) {
+    badRequest("Artist profile or active ARTIST subscription not found");
+  }
 
-  const Active = await subscriptionService.checkSubscription({
-    userId,
-    type: "ARTIST",
-  });
+  let songUpload, coverUpload, duration;
+  try {
+    [songUpload, coverUpload, duration] = await Promise.all([
+      uploadFromBuffer(songFile.buffer, "songs"),
+      uploadFromBuffer(coverFile.buffer, "coverImages"),
+      getAudioDurationFromBuffer(songFile.buffer, songFile.mimetype),
+    ]);
+  } catch (err) {
+    console.error("Error uploading files or generating embedding:", err);
+    throw badRequest("Failed to process audio or cover file");
+  }
 
-  if (!Active) badRequest("You need renew or subcribe artist plan");
-
-  const [songUpload, coverUpload, duration] = await Promise.all([
-    uploadFromBuffer(songFile.buffer, "songs"),
-    uploadFromBuffer(coverFile.buffer, "coverImages"),
-    getAudioDurationFromBuffer(songFile.buffer, songFile.mimetype),
-  ]);
-
-  const data = await Song.create({
+  const song = await Song.create({
     title,
-    artistId: artistId.id,
+    artistId: artist.id,
     duration,
     song: songUpload.public_id,
     coverImage: coverUpload.public_id,
   });
 
-  const doc = {
-    title: data.title,
-    coverImage: data.coverImage,
-  };
+  const [songUrl, coverUrl] = await Promise.all([
+    getUrlCloudinary(song.song),
+    getUrlCloudinary(song.coverImage),
+  ]);
 
-  addDataElastic(doc, data.id, "songs");
+  sendMessage("song_embedding", {
+    songId: song.id,
+    audioUrl: songUrl,
+  });
+  sendMessage("song_es", {
+    doc: {
+      songId: song.id,
+      title: song.title,
+      coverImage: song.coverImage,
+      autocomplete: normalizeTextForAutocomplete(song.title),
+    },
+    id: song.id,
+    index: "songs",
+  });
+
+  return { ...song.toJSON(), song: songUrl, coverImage: coverUrl };
 };
+
+const {
+  keys,
+  getCache,
+  setCache,
+  getOrSetCache,
+  publishInvalidationResource,
+  updateCacheResource,
+} = redis;
+const SEARCH_CACHE_TTL = 300;
 
 // =================================================================
 // === ĐÃ CẬP NHẬT HÀM NÀY (getSongs) ===
 // =================================================================
 const getSongs = async ({ page, size }, userId) => {
-  const { limit, offset } = getPagination(page, size);
-  const data = await Song.findAndCountAll({
-    attributes: [
-      "id",
-      "title",
-      "coverImage",
-      "duration",
-      [
-        sequelize.literal(`EXISTS (
+  const key = keys.songList(page, size, userId);
+  return getOrSetCache(key, async () => {
+    const { limit, offset } = getPagination(page, size);
+    const data = await Song.findAndCountAll({
+      attributes: [
+        "id",
+        "title",
+        "coverImage",
+        "duration",
+        [
+          sequelize.literal(`EXISTS (
           SELECT 1 
           FROM "FavoriteSong" fs 
           WHERE fs."SongId" = "Song"."id" 
           AND fs."UserId" = ?
         )`),
-        "isFavourite",
+          "isFavourite",
+        ],
       ],
-    ],
-    replacements: [userId || null],
-    include: [
-      {
-        model: Artist,
-        as: "artist",
-        attributes: ["stageName"],
-      },
-    ],
-    limit,
-    offset,
+      replacements: [userId || null],
+      include: [
+        {
+          model: Artist,
+          as: "artist",
+          attributes: ["stageName"],
+        },
+      ],
+      limit,
+      offset,
+    });
+    const songsJSON = data.rows.map((song) => song.toJSON());
+
+    const songs = await transformPropertyInList(
+      songsJSON,
+      ["song", "coverImage"],
+      getUrlCloudinary
+    );
+
+    const paginatedData = getPagingData(
+      { count: data.count, rows: songs },
+      page,
+      limit
+    );
+
+    return paginatedData;
   });
-  const songsJSON = data.rows.map((song) => song.toJSON());
-
-  const songs = await transformPropertyInList(
-    songsJSON,
-    ["song", "coverImage"],
-    getUrlCloudinary
-  );
-
-  const paginatedData = getPagingData(
-    { count: data.count, rows: songs },
-    page,
-    limit
-  );
-
-  return paginatedData;
 };
 
 const incrementViews = async (artistId, songId) => {
@@ -126,124 +188,105 @@ const incrementViews = async (artistId, songId) => {
       await record.increment("view", { by: 1 });
     }
   } catch (err) {
-    // Ghi log lỗi, nhưng không làm sập request chính
     console.error("Failed to increment views:", err);
   }
 };
 
-// HÀM CHÍNH ĐÃ TỐI ƯU
+const addSongToHistory = async (userId, songId) => {
+  const timestamp = Date.now();
+  const key = keys.history(userId);
+
+  await redis.redisClient.zAdd(key, timestamp, songId);
+};
+
 const getSong = async ({ userId, id }) => {
-  const song = await Song.findByPk(id.id, {
-    include: [
-      { model: Album, as: "album", attributes: ["id", "title"] },
-      {
-        model: Artist,
-        as: "artist",
-        attributes: ["id", "stageName", "avatarUrl"],
-      },
-    ],
-    attributes: [
-      "id",
-      "title",
-      "song",
-      "coverImage",
-      "isVipOnly",
-      "createdAt",
-      [
-        sequelize.literal(`EXISTS (
-          SELECT 1 FROM "FavoriteSong" fs 
-          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = $userId
+  const key = keys.songMeta(id);
+
+  return getOrSetCache(
+    key,
+    async () => {
+      addSongToHistory(userId, id);
+      const song = await Song.findByPk(id, {
+        include: [
+          { model: Album, as: "album", attributes: ["id", "title"] },
+          {
+            model: Artist,
+            as: "artist",
+            attributes: ["id", "stageName", "avatarUrl"],
+          },
+        ],
+        attributes: [
+          "id",
+          "title",
+          "song",
+          "coverImage",
+          "isVipOnly",
+          "createdAt",
+          [
+            sequelize.literal(`EXISTS (
+          SELECT 1 FROM "FavoriteSong" fs
+          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = ${userIdValue}
         )`),
-        "isFavourite",
-      ],
-    ],
-    replacements: { userId: userId || null },
-  });
+            "isFavourite",
+          ],
+        ],
+      });
 
-  if (!song) return null;
+      if (!song) return null;
 
-  incrementViews(song.artist.id, song.id);
+      const songJson = song.toJSON();
+      const currentId = songJson.id;
+      const albumId = songJson.album ? songJson.album.id : null;
+      const commonWhere = albumId ? { albumId } : { albumId: null };
 
-  const songJson = song.toJSON();
-  const currentId = songJson.id;
-  const albumId = songJson.album ? songJson.album.id : null;
-  const commonWhere = albumId ? { albumId } : { albumId: null };
-  const prevQuery = Song.findOne({
-    where: { ...commonWhere, id: { [Op.lt]: currentId } },
-    order: [["id", "DESC"]],
-    attributes: ["id"],
-  });
-  const nextQuery = Song.findOne({
-    where: { ...commonWhere, id: { [Op.gt]: currentId } },
-    order: [["id", "ASC"]],
-    attributes: ["id"],
-  });
+      // Previous and next song
+      const [previousSong, nextSong] = await Promise.all([
+        Song.findOne({
+          where: { ...commonWhere, id: { [Op.lt]: currentId } },
+          order: [["id", "DESC"]],
+          attributes: ["id"],
+        }),
+        Song.findOne({
+          where: { ...commonWhere, id: { [Op.gt]: currentId } },
+          order: [["id", "ASC"]],
+          attributes: ["id"],
+        }),
+      ]);
 
-  const [
-    isSubscription,
-    ads,
-    songUrl,
-    coverImageUrl,
-    avatarUrl,
-    previousSong,
-    nextSong,
-  ] = await Promise.all([
-    subscriptionService.checkSubscription({
-      userId,
-      type: subscriptionType.USER,
-    }),
-    adsService.getRandomAd(),
-    getUrlCloudinary(songJson.song),
-    getUrlCloudinary(songJson.coverImage),
-    songJson.artist.avatarUrl
-      ? getUrlCloudinary(songJson.artist.avatarUrl)
-      : Promise.resolve(null),
-    prevQuery,
-    nextQuery,
-  ]);
+      songJson.previousSongId = previousSong ? previousSong.id : null;
+      songJson.nextSongId = nextSong ? nextSong.id : null;
 
-  songJson.song = songUrl;
-  songJson.coverImage = coverImageUrl;
-  songJson.artist.avatarUrl = avatarUrl;
-  let finalPrev = previousSong;
-  let finalNext = nextSong;
+      // Get subscription status, ads, and urls concurrently
+      const [isSubscription, ads, songUrl, coverImageUrl, avatarUrl] =
+        await Promise.all([
+          subscriptionService.checkSubscription({
+            userId,
+            type: subscriptionType.USER,
+          }),
+          adsService.getRandomAd(),
+          getUrlCloudinary(songJson.song),
+          getUrlCloudinary(songJson.coverImage),
+          songJson.artist.avatarUrl
+            ? getUrlCloudinary(songJson.artist.avatarUrl)
+            : null,
+        ]);
 
-  if (!previousSong || !nextSong) {
-    const [firstSong, lastSong] = await Promise.all([
-      !nextSong
-        ? Song.findOne({
-            where: commonWhere,
-            order: [["id", "ASC"]],
-            attributes: ["id"],
-          })
-        : Promise.resolve(null),
+      // Replace urls in songJson
+      songJson.song = songUrl;
+      songJson.coverImage = coverImageUrl;
+      songJson.artist.avatarUrl = avatarUrl;
 
-      !previousSong
-        ? Song.findOne({
-            where: commonWhere,
-            order: [["id", "DESC"]],
-            attributes: ["id"],
-          })
-        : Promise.resolve(null),
-    ]);
+      // Handle ads visibility
+      if (isSubscription || !ads || ads.type !== "AUDIO") {
+        songJson.ads = null;
+      } else {
+        songJson.ads = ads;
+      }
 
-    if (!previousSong) finalPrev = lastSong;
-    if (!nextSong) finalNext = firstSong;
-  }
-
-  if (finalPrev && finalPrev.id === currentId) finalPrev = null;
-  if (finalNext && finalNext.id === currentId) finalNext = null;
-
-  songJson.previousSongId = finalPrev ? finalPrev.id : null;
-  songJson.nextSongId = finalNext ? finalNext.id : null;
-
-  if (isSubscription || !ads || ads.type !== "AUDIO") {
-    songJson.ads = null;
-  } else {
-    songJson.ads = ads;
-  }
-
-  return songJson;
+      return songJson;
+    },
+    SEARCH_CACHE_TTL
+  );
 };
 
 const removeSong = async ({ userId, songId }) => {
@@ -255,6 +298,11 @@ const removeSong = async ({ userId, songId }) => {
   if (!song) notFound("Song not found");
   if (song.artist.userId !== userId)
     badRequest("You are not the owner of this song");
+  await publishInvalidationResource({
+    resource: "song",
+    idOrQuery: songId,
+    type: "song:delete",
+  });
 
   await song.destroy();
 };
@@ -265,7 +313,14 @@ const deleteSong = async (songId) => {
     await deleteFromCloudinary(song.coverImage),
     await deleteFromCloudinary(song.song),
   ]);
-  deleteDataElastic(song.id, "songs");
+  await Promise.all[
+    (sendMessage("song_es_del", { id: songId, index: "songs" }),
+    publishInvalidationResource({
+      resource: "song",
+      idOrQuery: songId,
+      type: "song:delete",
+    }))
+  ];
   await Song.destroy({
     where: { id: songId },
   });
@@ -273,25 +328,22 @@ const deleteSong = async (songId) => {
 
 const restoreSong = async ({ userId, id }) => {
   const artist = await Artist.findOne({
-    where: { userId: userId },
+    where: { userId },
     attributes: ["id"],
   });
   if (!artist) {
     notFound("Artist");
   }
-  const [numberOfAffectedRows] = await Song.update(
+  const [numberOfAffectedRows, updatedRows] = await Song.update(
     { deletedAt: null },
     {
       where: {
-        id: id,
+        id,
+        artistId: artist.id,
         deletedAt: { [Op.not]: null },
       },
-      include: {
-        model: Artist,
-        as: "artist",
-        where: { artistId: artist.id },
-      },
       paranoid: false,
+      returning: true, // cần để lấy dữ liệu sau khi update
     }
   );
 
@@ -300,6 +352,12 @@ const restoreSong = async ({ userId, id }) => {
   } else {
     notFound("Song");
   }
+
+  await updateCacheResource({
+    resource: "song",
+    idOrQuery: id,
+    newData: updatedRows[1][0],
+  });
 };
 
 const updateSong = async ({ id, userId, data, coverFile }) => {
@@ -320,8 +378,12 @@ const updateSong = async ({ id, userId, data, coverFile }) => {
       await deleteFromCloudinary(oldCover);
     }
   }
-  await song.update(data);
-
+  const newdata = await song.update(data, { returning: true });
+  await updateCacheResource({
+    resource: "song",
+    idOrQuery: id,
+    newData: newdata[1][0],
+  });
   return song;
 };
 const addToFavoutite = async ({ userId, songId }) => {
@@ -335,7 +397,6 @@ const addToFavoutite = async ({ userId, songId }) => {
   if (!song) badRequest("Song not exist");
   await user.addFavoriteSongs(song);
 };
-
 const getFavourite = async ({ userId }, page, size) => {
   if (!userId) return null;
   const user = await User.findByPk(userId);
@@ -377,7 +438,6 @@ const getFavourite = async ({ userId }, page, size) => {
     size
   );
 };
-
 const deleteFavourite = async ({ id, userId }) => {
   console.log("🚀 ~ deleteFavourite ~ id:", id);
   const user = await User.findByPk(userId);
@@ -386,7 +446,6 @@ const deleteFavourite = async ({ id, userId }) => {
   if (!song) badRequest("Song not exist");
   await user.removeFavoriteSongs(song);
 };
-
 const getSongsByArtist = async ({ artistId }) => {
   const artist = await Artist.findByPk(artistId);
   if (!artist) notFound();
@@ -404,6 +463,107 @@ const getSongsByArtist = async ({ artistId }) => {
 
   return songs;
 };
+const totalSongs = async () => {
+  return await Song.count();
+};
+const getTrashSongs = async ({ userId }) => {
+  const artist = await Artist.findOne({ where: { userId } });
+  if (!artist) notFound();
+  const songP = await Song.findAll({
+    where: {
+      artistId: artist.id,
+      deletedAt: { [Op.ne]: null },
+    },
+    paranoid: false,
+  });
+
+  console.log("🚀 ~ getTrashSongs ~ songP:", songP);
+
+  if (!songP || songP.length === 0) return [];
+
+  const songJson = songP.map((song) => song.toJSON());
+
+  const songs = await transformPropertyInList(
+    songJson,
+    ["coverImage", "song"],
+    getUrlCloudinary
+  );
+
+  return songs;
+};
+
+const getTopSongs = async (limit = 20) => {
+  const res = redis.redisClient.zrangebyscore(keys.topSongs(), 0, limit - 1, {
+    REV: true,
+  });
+  return res.map((r) => ({ key: r.value, score: r.score }));
+};
+const recordListen = async (userId, songId) => {
+  if (!userId) return;
+  await redis.redisClient.zIncrBy(`user:${userId}:listens`, 1, songId);
+};
+
+const getUserHistory = async (userId) => {
+  const history = await redis.redisClient.zrevrange(
+    `user:${userId}:listens`,
+    0,
+    -1,
+    "WITHSCORES"
+  );
+  return history;
+};
+
+export const recommendByAudio = async (songId, topN = 10) => {
+  const key = keys.recomend(songId);
+  return getOrSetCache(
+    key,
+    async () => {
+      const targetSong = await Song.findByPk(songId);
+      if (!targetSong) return [];
+      const grpcRequest = {
+        songId: songId,
+      };
+      const grpcResponse = await new Promise((resolve, reject) => {
+        adudioClient.GetRecommendSongs(grpcRequest, (err, res) =>
+          err ? reject(err) : resolve(res)
+        );
+      });
+      return grpcResponse;
+    },
+    3600
+  );
+};
+
+export const recommendForUser = async (userId, topN = 10) => {
+  if (!userId) return [];
+  const history = await getUserHistory(userId);
+  if (!history || history.length === 0) {
+    return await getTopSongs(topN);
+  }
+  const listenedEmbeddings = await Promise.all(
+    history.map(async ({ songId }) => {
+      const song = await Song.findByPk(songId);
+      return song.embedding;
+    })
+  );
+
+  const allSongs = getSongs({ page: 1, size: 20 }, userId);
+
+  const recommendations = allSongs
+    .filter((s) => !history.some((h) => h.songId === s.id))
+    .map((s) => {
+      const score =
+        listenedEmbeddings
+          .map((e) => cosineSimilarity(e, s.embedding))
+          .reduce((a, b) => a + b, 0) / listenedEmbeddings.length;
+      return { ...s.toJSON(), score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN);
+
+  return recommendations;
+};
+
 export default {
   createSong,
   getSongs,
@@ -416,4 +576,10 @@ export default {
   getFavourite,
   deleteFavourite,
   getSongsByArtist,
+  totalSongs,
+  getTrashSongs,
+  getTopSongs,
+  getUserHistory,
+  recommendForUser,
+  recommendByAudio,
 };

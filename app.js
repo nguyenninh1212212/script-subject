@@ -10,19 +10,33 @@ import errorHandler from "./src/middleware/errorHandler.js";
 import { initDB } from "./src/config/init/initdb.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import socketServer from "./src/config/socketServer.js";
+import redisConfig from "./src/config/redis.config.js";
 import cors from "cors";
+import { initRabbit } from "./src/config/rabitmq.config.js";
+import rateLimit from "express-rate-limit";
 dotenv.config();
 
 const swaggerPath = path.resolve("./swagger-output.json");
 const swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
 
-// Để dùng __dirname trong ESM
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 
 const allowedOrigins = process.env.ALLOW_URL.split("|");
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Bạn đã vượt quá số lần truy cập. Vui lòng thử lại sau.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
 
 app.use(
   cors({
@@ -51,7 +65,10 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/", indexRouter);
-
+socketServer();
+redisConfig.redisClient;
+redisConfig.redisSub;
+initRabbit();
 await initDB();
 
 app.use(errorHandler);

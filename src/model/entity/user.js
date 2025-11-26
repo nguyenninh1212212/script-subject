@@ -17,10 +17,8 @@ export default (sequelize, DataTypes) => {
       password: { type: DataTypes.STRING, allowNull: true },
       refreshToken: { type: DataTypes.TEXT, allowNull: true },
       googleId: { type: DataTypes.STRING, unique: true, allowNull: true },
-      provider: {
-        type: DataTypes.ENUM("LOCAL", "GOOGLE"),
-        defaultValue: "LOCAL",
-      },
+      facebookId: { type: DataTypes.STRING, unique: true, allowNull: true },
+      avatar: { type: DataTypes.STRING, unique: false, allowNull: true },
     },
     {
       tableName: "users",

@@ -36,6 +36,7 @@ COPY --from=builder /app ./
 
 # Mở port ứng dụng
 EXPOSE 8000
+EXPOSE 4000
 
 # Đảm bảo khi container restart thì code mới nhất được dùng
 # (Cách chuẩn là dùng bind mount khi dev)

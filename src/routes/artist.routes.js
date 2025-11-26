@@ -103,6 +103,7 @@ router.get(
 
 router.get(
   "/follows",
+  authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Artist']
     const userId = req.user.sub;
@@ -126,22 +127,24 @@ router.get(
 
 router.post(
   "/follow/:id",
+  authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Artist']
     const userId = req.user.sub;
     const { id } = req.params;
     await followService.follow({ userId, artistId: id });
-    success(res, artist);
+    message(res, "Success");
   })
 );
 router.delete(
   "/unfollow/:id",
+  authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Artist']
     const userId = req.user.sub;
     const { id } = req.params;
     await followService.unFollow({ userId, artistId: id });
-    success(res, artist);
+    message(res, "Success");
   })
 );
 

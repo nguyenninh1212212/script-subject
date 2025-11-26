@@ -12,6 +12,7 @@ import adsRoutes from "./ads.routes.js";
 import homeRouter from "./home.routes.js";
 import nftRouter from "./nft.routes.js";
 import searchRoutes from "./search.routes.js";
+import adminRouter from "./admin.routes.js";
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use("/api/plans", planRoutes);
 router.use("/api/paypal", paypalRoutes); // thêm route paypal
 router.use("/api/search", searchRoutes); // thêm route paypal
 router.use("/api/nfts", nftRouter);
+router.use("/api/admin", adminRouter);
 
 export default router;

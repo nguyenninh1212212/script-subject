@@ -6,6 +6,7 @@ import {
   authenticateToken,
   authorizeRoles,
 } from "../middleware/authMiddleware.js";
+import passport from "passport";
 
 const router = express.Router();
 
@@ -14,19 +15,15 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { username, password } = req.body;
-    const token = await userService.login({ username, password });
-    res.cookie("refreshToken", token.refreshToken, {
+    const ress = await userService.login({ username, password });
+    res.cookie("refreshToken", ress.refreshToken, {
       httpOnly: true,
       secure: process.env.IS_DEV == "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+    const { artistId, name, subscription, token, email, avatar } = ress;
     success(res, {
-      user: {
-        name: token.name || "Anonymous",
-        artistId: token.artistId || null,
-        token: token.token,
-        walletAddress: token.walletAddress,
-      },
+      user: { artistId, name, subscription, token, email, avatar },
     });
   })
 );
@@ -36,8 +33,8 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
 
-    const { username, email, password, name } = req.body;
-    await userService.register({ username, email, password, name });
+    const { username, password, name, email } = req.body;
+    await userService.register({ username, password, name, email });
     message(res, "Register success", 201);
   })
 );
@@ -56,8 +53,8 @@ router.get(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const refreshToken = req.cookies.refreshToken;
-    const newToken = await userService.refreshToken({ refreshToken });
-    success(res, { user: newToken.user });
+    const newToken = await userService.refreshAccessToken({ refreshToken });
+    success(res, { user: newToken });
   })
 );
 
@@ -108,20 +105,25 @@ router.post(
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { credential } = req.body;
-    const token = await userService.googleLogin({ credential });
-    res.cookie("refreshToken", token.refreshToken, {
+    const ress = await userService.googleLogin({ credential });
+    res.cookie("refreshToken", ress.refreshToken, {
       httpOnly: true,
       secure: process.env.IS_DEV === "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+    const { artistId, name, subscription, token, email, avatar } = ress;
     success(res, {
-      user: {
-        name: token.name || "Anonymous",
-        artistId: token.artistId || null,
-        token: token.token,
-        userWallet: token.walletAddress,
-      },
+      user: { artistId, name, subscription, token, email, avatar },
     });
+  })
+);
+router.get(
+  "/google/unlink",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['User']
+    const { refreshToken } = req.cookies.refreshToken;
+    await userService.unLinkGoogle({ refreshToken });
+    message(res, "Success", 200);
   })
 );
 

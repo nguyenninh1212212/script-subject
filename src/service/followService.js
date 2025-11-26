@@ -1,18 +1,27 @@
 import { User, Artist } from "../model/entity/index.js";
 import { alreadyExist, notFound } from "../middleware/errorHandler.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
+import { badRequest } from "../middleware/errorHandler.js";
 
 const follow = async ({ userId, artistId }) => {
   const user = await User.findByPk(userId);
   if (!user) notFound("User");
+
   const artist = await Artist.findByPk(artistId);
   if (!artist) notFound("Artist");
+
   if (artist.userId === userId) {
     badRequest("You cannot follow yourself");
   }
-  (await user.getFollowedArtist(artist))
-    ? alreadyExist("Follow")
-    : await user.addFollowedArtist(artist);
+
+  // Kiểm tra đã follow chưa
+  const isFollowing = await user.hasFollow(artist);
+  if (isFollowing) {
+    alreadyExist("Follow");
+  }
+
+  // Thêm follow
+  await user.addFollow(artist); // đúng tên hàm
 };
 
 const unFollow = async ({ userId, artistId }) => {
@@ -22,7 +31,7 @@ const unFollow = async ({ userId, artistId }) => {
   const artist = await Artist.findByPk(artistId);
   if (!artist) notFound("Artist");
 
-  await user.removeFollowedArtist(artist);
+  await user.removeFollow(artist);
 };
 const myFollowers = async (userId, { page, size }) => {
   const artist = await Artist.findOne({ where: userId });

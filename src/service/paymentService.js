@@ -1,6 +1,5 @@
 import {
   Payment,
-  User,
   Subscription,
   SubscriptionPlan,
 } from "../model/entity/index.js";
@@ -9,8 +8,8 @@ import paypal from "@paypal/checkout-server-sdk";
 import { convertCurrency } from "../util/foreignCurrency.js";
 import currentMap from "../../currentCode.json" with  { type: "json" };
 import { alreadyExist, notFound } from "../middleware/errorHandler.js";
-import { where } from "sequelize";
-
+import moment from "moment";
+import { Op } from "sequelize";
 const PAYPAL_SUCCESS_URL = process.env.PAYPAL_SUCCESS_URL;
 const PAYPAL_CANCEL_URL = process.env.PAYPAL_CANCEL_URL;
 
@@ -154,4 +153,21 @@ const getPaymentOrder = async (orderId) => {
   };
 };
 
-export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal, getPaymentOrder };
+const totalPayment = async () => {
+  const start = moment().startOf("month").toDate();
+  const end = moment().endOf("month").toDate();
+
+  const payments = await Payment.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [start, end],
+      },
+    },
+    attributes:["amount"]
+  });
+  const total = payments.reduce((acc, p) => acc + Number(p.amount), 0);
+
+  return total;
+};
+
+export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal, getPaymentOrder ,totalPayment};

@@ -48,3 +48,18 @@ export const parseDateDMY = (dateStr) => {
   // JS month bắt đầu từ 0
   return new Date(year, month - 1, day);
 };
+
+export function normalizeTextForAutocomplete(text) {
+  return text
+    .normalize("NFD") // tách dấu ra
+    .replace(/[\u0300-\u036f]/g, "") // loại bỏ dấu
+    .replace(/[^a-zA-Z0-9]/g, "") // loại bỏ ký tự đặc biệt & khoảng trắng
+    .toLowerCase();
+}
+
+export const cosineSimilarity = (vecA, vecB) => {
+  const dot = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
+  const magA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
+  const magB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+  return dot / (magA * magB);
+};

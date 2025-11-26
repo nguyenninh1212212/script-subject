@@ -87,6 +87,16 @@ router.get(
     success(res, songs);
   })
 );
+router.get(
+  "/trash",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const userId = req.user.sub;
+    const songs = await songService.getTrashSongs({ userId });
+    success(res, songs);
+  })
+);
 
 router.get(
   "/favorite",
@@ -134,7 +144,15 @@ router.post(
     message(res, "Restore success");
   })
 );
-
+router.get(
+  "/recommend",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const userId = req.user?.sub;
+    const data = await songService.recommendForUser(userId, 10);
+    success(res, data);
+  })
+);
 router.get(
   "/artist/:artistId",
   authenticateToken(false),
@@ -167,7 +185,6 @@ router.get(
 router.delete(
   "/:id",
   authenticateToken(true),
-  authorizeRoles("admin"),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
     const { id } = req.params;
@@ -214,6 +231,15 @@ router.post(
     const { songId } = req.params;
     await songService.addToFavoutite({ userId, songId });
     message(res, "success");
+  })
+);
+router.get(
+  "/recommend/:songId",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const { songId } = req.params;
+    const data = await songService.recommendByAudio(songId);
+    success(res, data);
   })
 );
 

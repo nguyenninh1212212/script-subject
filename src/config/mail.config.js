@@ -16,7 +16,7 @@ const sendEmail = async ({ from, to, subject, text }) => {
     to: to, // Email người nhận
     subject: subject, // Tiêu đề
     text: text, // Nội dung text
-    html: "<h1>Xin chào!</h1><p>Email này được gửi tự động từ <b>Node.js</b>!</p>", // Nội dung HTML
+    html: "<h1>Xin chào!</h1><p>Email này được gửi tự động từ <b>Node.js</b>!</p>",
   };
 
   try {

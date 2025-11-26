@@ -10,6 +10,8 @@ const ALLOWED_MIME_TYPES = [
   "audio/wav",
   "audio/ogg",
   "application/octet-stream",
+  "audio/webm",
+  "image/avif",
 ];
 const fileFilter = (req, file, cb) => {
   if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {

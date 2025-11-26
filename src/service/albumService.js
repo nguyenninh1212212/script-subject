@@ -9,7 +9,14 @@ import { uploadFromBuffer } from "../util/cloudinary.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { getUrlCloudinary } from "../util/cloudinary.js";
 import { transformPropertyInList } from "../util/help.js";
+import redis from "../config/redis.config.js";
 
+const {
+  getOrSetCache,
+  publishInvalidationResource,
+  updateCacheResource,
+  keys,
+} = redis;
 const createAlbum = async ({ title, userId, coverFile }) => {
   const artist = await Artist.findOne({
     where: { userId: userId },
@@ -24,6 +31,9 @@ const createAlbum = async ({ title, userId, coverFile }) => {
   const coverUrl = coverFile
     ? (await uploadFromBuffer(coverFile.buffer, "albumCovers")).public_id
     : null;
+  await publishInvalidationResource({
+    pattern: ["album:list:*"],
+  });
   return await Album.create({
     title,
     artistId: artist.id,
@@ -32,62 +42,76 @@ const createAlbum = async ({ title, userId, coverFile }) => {
 };
 
 const getAlbums = async ({ page, size }) => {
-  const { limit, offset } = getPagination(page, size);
-  const data = await Album.findAndCountAll({
-    include: [
+  const cacheKey = keys.albumList(page, size);
+
+  return await getOrSetCache(cacheKey, async () => {
+    const { limit, offset } = getPagination(page, size);
+
+    const data = await Album.findAndCountAll({
+      include: [
+        {
+          model: Artist,
+          as: "artist",
+          attributes: ["id", "stageName"],
+        },
+      ],
+      attributes: ["coverUrl", "createdAt", "id", "title"],
+      limit,
+      offset,
+      raw: true,
+    });
+
+    const album = await transformPropertyInList(
+      data.rows,
+      ["coverUrl"],
+      getUrlCloudinary
+    );
+
+    return getPagingData(
       {
-        model: Artist,
-        as: "artist",
-        attributes: ["id", "stageName"],
+        count: data.count,
+        rows: album.filter(Boolean),
       },
-    ],
-    attributes: ["coverUrl", "createdAt", "id", "title"],
-    limit,
-    offset,
-    raw: true,
+      page,
+      limit
+    );
   });
-
-  const album = await transformPropertyInList(
-    data.rows,
-    ["coverUrl"],
-    getUrlCloudinary
-  );
-
-  return getPagingData(
-    {
-      count: data.count, // Giữ lại tổng số lượng gốc
-      rows: album.filter(Boolean), // Sử dụng mảng đã biến đổi
-    },
-    page,
-    limit
-  );
 };
 
 const getAlbum = async ({ id }) => {
-  const data = await Album.findByPk(id, {
-    include: [
-      {
-        model: Song,
-        as: "songs",
-        attributes: ["id", "duration", "coverImage", "title", "song"],
-      },
-      {
-        model: Artist,
-        as: "artist",
-        attributes: ["id", "stageName"],
-      },
-    ],
-    attributes: ["id", "coverUrl", "releaseDate", "createdAt", "title"],
-  });
+  const cacheKey = keys.album(id);
 
-  const album = data.toJSON();
-  album.coverUrl = data.coverUrl ? await getUrlCloudinary(data.coverUrl) : null;
-  album.songs = await transformPropertyInList(
-    album.songs,
-    ["coverImage", "song"],
-    getUrlCloudinary
-  );
-  return album;
+  return await getOrSetCache(cacheKey, async () => {
+    const data = await Album.findByPk(id, {
+      include: [
+        {
+          model: Song,
+          as: "songs",
+          attributes: ["id", "duration", "coverImage", "title", "song"],
+        },
+        {
+          model: Artist,
+          as: "artist",
+          attributes: ["id", "stageName"],
+        },
+      ],
+      attributes: ["id", "coverUrl", "releaseDate", "createdAt", "title"],
+    });
+
+    if (!data) notFound("Album");
+
+    const album = data.toJSON();
+    album.coverUrl = data.coverUrl
+      ? await getUrlCloudinary(data.coverUrl)
+      : null;
+    album.songs = await transformPropertyInList(
+      album.songs,
+      ["coverImage", "song"],
+      getUrlCloudinary
+    );
+
+    return album;
+  });
 };
 
 const addSongToAlbum = async ({ id, songId, userId }) => {
@@ -114,7 +138,10 @@ const addSongToAlbum = async ({ id, songId, userId }) => {
   if (alreadyExists) {
     alreadyExist("This song is already in this album");
   }
-
+  await publishInvalidationResource({
+    resource: "album",
+    idOrQuery: id,
+  });
   await song.update({ albumId: album.id });
 };
 
@@ -123,6 +150,10 @@ const deleteAlbum = async ({ id, userId }) => {
   const album = await Album.findByPk(id);
   if (artist.id != album.artistId) badRequest("You do not have permission ");
   await album.destroy();
+  await publishInvalidationResource({
+    resource: "album",
+    pattern: "album:list:*",
+  });
 };
 
 const deleteSongAlbum = async ({ userId, songId }) => {

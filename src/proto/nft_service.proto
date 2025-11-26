@@ -146,6 +146,8 @@ message ResellTicketSummary {
   bool isSold = 5;
   string buyerId = 6;
   EventSummary event = 7;
+  string tokenId=8;
+
 }
 message GetResellTicketsResponse {
   repeated ResellTicketSummary tickets = 1;
