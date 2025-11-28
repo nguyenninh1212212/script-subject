@@ -8,30 +8,26 @@ const errorHandler = (err, req, res, next) => {
   message(res, msg, statusCode);
 };
 
-function notFound() {
-  return createError(404, "Not Found");
+export default errorHandler;
+
+function notFound(msg = "") {
+  throw createError(404, msg + "Not Found");
 }
 
 function badRequest(msg = "Bad Request") {
-  return createError(400, msg);
+  throw createError(400, msg);
 }
 
 function unauthorized(msg = "Unauthorized") {
-  return createError(401, msg);
+  throw createError(401, msg);
 }
 
 function forbidden(msg = "Forbidden") {
-  return createError(403, msg);
-}
-function alreadyExist(msg = "") {
-  return createError(409, msg + " already Exist");
+  throw createError(403, msg);
 }
 
-export {
-  errorHandler,
-  notFound,
-  badRequest,
-  unauthorized,
-  forbidden,
-  alreadyExist,
-};
+function alreadyExist(msg = "") {
+  throw createError(409, msg + " already Exist");
+}
+
+export { notFound, badRequest, unauthorized, forbidden, alreadyExist };

@@ -1,0 +1,13 @@
+# Bỏ qua thư mục node_modules trên máy của bạn
+node_modules
+
+# Bỏ qua các file log
+npm-debug.log
+yarn-error.log
+
+# Bỏ qua các file cấu hình local
+.env
+.DS_Store
+
+# Bỏ qua thư mục git
+.git

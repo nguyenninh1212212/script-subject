@@ -5,29 +5,37 @@ import { unauthorized, forbidden } from "./errorHandler.js";
 
 dotenv.config();
 
-export const authenticateToken = (req, res, next) => {
-  const header = req.headers["authorization"];
-  const token = header && header.split(" ")[1];
+export const authenticateToken =
+  (require = true) =>
+  (req, res, next) => {
+    try {
+      const header = req.headers["authorization"];
+      const token = header?.split(" ")[1];
 
-  if (token == null) throw unauthorized("Unauthorized");
+      if (!token) {
+        if (require) return res.status(401).json({ message: "Unauthorized" });
+        return next();
+      }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) throw f;
-    req.user = AESDecrypt(user.data);
-    next();
-  });
-};
+      jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+          if (require) return res.status(401).json({ message: "Unauthorized" });
+          return next();
+        }
+        req.user = AESDecrypt(user.data);
+        next();
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
 export const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) throw unauthorized("Unauthorized");
-
-    console.log(req.user.roles, allowedRoles);
-
     if (!req.user.roles.some((role) => allowedRoles.includes(role))) {
       throw forbidden();
     }
-
     next();
   };
 };
