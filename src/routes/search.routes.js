@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express from "express";
 import asyncHandler from "../middleware/asyncHandler.js";
 import { success } from "../model/dto/response.js";
 import {
@@ -8,7 +8,7 @@ import {
 } from "../service/searchService.js";
 import upload from "../middleware/multer.js";
 
-const router = Router();
+const router = express.Router();
 
 router.get(
   "/",

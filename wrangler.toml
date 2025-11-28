@@ -1,0 +1,4 @@
+name = "musicbe"
+main = "app.js" 
+compatibility_date = "2025-11-28" 
+compatibility_flags = ["nodejs_compat"] # Bắt buộc cho Node.js

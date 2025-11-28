@@ -29,6 +29,7 @@
     "geoip-lite": "^1.4.10",
     "google-auth-library": "^10.4.0",
     "http-errors": "~1.6.3",
+    "itty-router": "^5.0.22",
     "jade": "~1.11.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "~1.9.1",

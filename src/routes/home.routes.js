@@ -1,10 +1,10 @@
-import { Router } from "express";
+import express from "express";
 import homeService from "../service/homeService.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import { success } from "../model/dto/response.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
-const router = Router();
+const router = express.Router();
 
 router.get(
   "/",

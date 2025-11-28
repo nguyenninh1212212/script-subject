@@ -1,4 +1,5 @@
 import express from "express";
+
 import artistService from "../service/artistService.js";
 import followService from "../service/followService.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
