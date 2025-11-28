@@ -32,5 +32,6 @@ router.use("/api/paypal", paypalRoutes); // thêm route paypal
 router.use("/api/search", searchRoutes); // thêm route paypal
 router.use("/api/nfts", nftRouter);
 router.use("/api/admin", adminRouter);
+console.log("Server listen in port : 8000");
 
 export default router;

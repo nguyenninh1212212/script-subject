@@ -5,7 +5,10 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "dev": "nodemon ./bin/www --config  nodemon.json "
+    "dev": "nodemon ./bin/www --config  nodemon.json ",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:validation": "jest ./test/grpcTest/validation.test.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.19.1",
@@ -46,6 +49,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "jest": "^30.2.0",
     "nodemon": "^3.1.10",
     "swagger-autogen": "^2.23.7"
   }

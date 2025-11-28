@@ -16,6 +16,7 @@ import {
   listResellTicket,
   updateResellTicketClient,
   updateTicketStatusClient,
+  getArtistTicket,
 } from "../service/nft/nftService.js";
 import { success } from "../model/dto/response.js";
 import upload from "../middleware/multer.js";
@@ -108,9 +109,6 @@ router.post(
   authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['NFT']
-    const userId = req.user.sub;
-    const { id } = req.params;
-    const { status } = req.query;
     const data = await updateTicketStatusClient();
     success(res, data);
   })
@@ -135,6 +133,23 @@ router.get(
     const userId = req.user.sub;
     const data = await getMyTickets({ page, limit, userId });
     console.log("🚀 ~ data:", data);
+    success(res, data);
+  })
+);
+
+router.get(
+  "/artist-ticket",
+  authenticateToken(true),
+
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['NFT']
+    const userId = req.user.sub;
+    const { page = 1, limit = 10 } = req.query;
+    const data = await getArtistTicket({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      userId: userId,
+    });
     success(res, data);
   })
 );

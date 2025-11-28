@@ -20,7 +20,6 @@ dotenv.config();
 const swaggerPath = path.resolve("./swagger-output.json");
 const swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -28,15 +27,15 @@ const app = express();
 
 const allowedOrigins = process.env.ALLOW_URL.split("|");
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Bạn đã vượt quá số lần truy cập. Vui lòng thử lại sau.",
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 1000,
+//   message: "Bạn đã vượt quá số lần truy cập. Vui lòng thử lại sau.",
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
 
-app.use(limiter);
+// app.use(limiter);
 
 app.use(
   cors({

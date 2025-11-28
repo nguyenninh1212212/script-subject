@@ -20,63 +20,74 @@ const { keys, redisClient, redisSub, getOrSetCache, safeParse, safeStringify } =
   redis;
 
 const searchData = async (queryText, { from = 0, size = 30 } = {}) => {
+  console.log("🚀 ~ searchData ~ queryText:", queryText);
   try {
-    const normalizedQuery = normalizeTextForAutocomplete(queryText);
+    const normalizedQuery = queryText;
+    console.log("🚀 ~ searchData ~ normalizedQuery:", normalizedQuery);
     const cacheKey = keys.search(`${normalizedQuery}:${from}:${size}`);
+
     return getOrSetCache(
       cacheKey,
       async () => {
         const indexes = ["artists", "songs"];
         const existingIndexes = [];
 
+        // --- Kiểm tra Index Tồn tại (Giữ nguyên) ---
         for (const index of indexes) {
           const exists = await client.indices.exists({ index });
-          console.log("🚀 ~ searchData ~ exists:", exists);
           if (exists) existingIndexes.push(index);
         }
 
-        if (existingIndexes.length === 0) return { artists: [], songs: [] };
+        if (existingIndexes.length === 0)
+          return { artists: [], songs: [], suggestions: [] };
 
         const response = await client.search({
           index: existingIndexes,
           from,
           size,
+
+          // 1. KHỐI SUGGEST: Dùng để truy vấn trường 'autocomplete' (type: completion)
+          suggest: {
+            "all-autocomplete": {
+              prefix: normalizedQuery,
+              completion: {
+                field: "autocomplete", // Áp dụng Suggester cho tất cả các index
+                size: 10,
+              },
+            },
+          },
+
+          // 2. KHỐI QUERY: Dùng cho tìm kiếm chính xác, prefix, fuzziness (trên các trường TEXT)
           query: {
             bool: {
               should: [
-                // Tìm kiếm chính xác (boost cao nhất)
+                // A. MATCH CHÍNH XÁC & KEYWORD (Boost cao nhất)
                 {
                   multi_match: {
                     query: normalizedQuery,
-                    fields: ["name^3", "title^3", "autocomplete^2"],
-                    type: "phrase",
+                    // Giữ '.keyword' cho artists. Khả năng cao 'songs' chỉ có 'title' thường.
+                    fields: ["name.keyword^5", "title.keyword^5", "title^4"],
+                    type: "best_fields",
+                    boost: 5,
+                  },
+                },
+                // B. PHRASE PREFIX (Loại bỏ 'autocomplete' để tránh lỗi)
+                {
+                  multi_match: {
+                    query: normalizedQuery,
+                    // Chỉ tìm kiếm trên các trường text an toàn: 'name' và 'title'
+                    fields: ["name^3", "title^3"],
+                    type: "phrase_prefix",
                     boost: 3,
                   },
                 },
-                // Tìm kiếm wildcard - giống LIKE '%keyword%'
-                {
-                  multi_match: {
-                    query: `*${normalizedQuery}*`,
-                    fields: ["name.keyword", "title.keyword"],
-                    boost: 2,
-                  },
-                },
-                // Tìm kiếm prefix - giống LIKE 'keyword%'
+                // C. FUZZINESS (Xử lý lỗi chính tả, cũng loại bỏ 'autocomplete')
                 {
                   multi_match: {
                     query: normalizedQuery,
-                    fields: ["name", "title", "autocomplete"],
-                    type: "phrase_prefix",
-                    boost: 1.5,
-                  },
-                },
-                // Tìm kiếm với fuzziness
-                {
-                  multi_match: {
-                    query: normalizedQuery,
-                    fields: ["name", "title", "autocomplete"],
+                    fields: ["name", "title"], // Chỉ tìm kiếm trên name và title
                     fuzziness: "AUTO",
-                    operator: "or", // Đổi thành "or" để linh hoạt hơn
+                    operator: "and",
                     boost: 1,
                   },
                 },
@@ -86,28 +97,36 @@ const searchData = async (queryText, { from = 0, size = 30 } = {}) => {
           },
         });
 
-        console.log("🚀 ~ searchData ~ response:", response);
+        // console.log("🚀 ~ searchData ~ response:", response);
 
         let artists = [];
         let songs = [];
+        let suggestions = [];
+        console.log(response.hits?.hits);
 
+        // --- Xử lý Kết quả Tìm kiếm (Hits) ---
         for (const hit of response.hits?.hits || []) {
           const doc = { id: hit._id, ...hit._source };
           if (hit._index === "artists") artists.push(doc);
           else if (hit._index === "songs") songs.push(doc);
         }
 
-        // --- Transform URL ---
+        // --- Xử lý Kết quả Gợi ý (Suggestions) ---
+        // Lấy các gợi ý từ block 'suggest'
+        suggestions =
+          response.suggest?.["all-autocomplete"]?.[0]?.options.map((opt) => ({
+            text: opt.text,
+            index: opt._index,
+            source: opt._source,
+          })) || [];
+
+        // --- Transform URL (Giữ nguyên) ---
         [songs, artists] = await Promise.all([
           transformPropertyInList(songs, ["coverImage"], getUrlCloudinary),
           transformPropertyInList(artists, ["avatarUrl"], getUrlCloudinary),
         ]);
 
-        const result = { artists, songs };
-
-        redisClient.set(cacheKey, safeStringify(result), {
-          EX: SEARCH_CACHE_TTL,
-        });
+        const result = { artists, songs, suggestions }; // Thêm suggestions vào kết quả
 
         return result;
       },
@@ -115,7 +134,7 @@ const searchData = async (queryText, { from = 0, size = 30 } = {}) => {
     );
   } catch (error) {
     console.error("❌ Lỗi khi tìm kiếm:", error.message);
-    return { artists: [], songs: [] };
+    return { artists: [], songs: [], suggestions: [] };
   }
 };
 

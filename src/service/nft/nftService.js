@@ -54,8 +54,6 @@ const createTicket = async ({
     include: { model: User, as: "owner", attributes: ["walletAddress"] },
   });
 
-  if (!artist) notFound("Artist");
-  if (!artist.owner.walletAddress) badRequest("Wallet required");
   if (!artist) return notFound("Artist");
   const isActive = await subService.checkSubscription({ userId, type: "ARTIST" });
   if (!isActive) badRequest("Your artist subscription expired");
@@ -294,6 +292,20 @@ const updateResellTicketClient = async ({ sellerId,  resellId }) => {
   });
 }
 
+const getArtistTicket = async ({userId,page,limit}) => {
+
+  const artist = await Artist.findOne({where :{userId :userId},attributes :["id"]});
+  if (!artist) notFound("Artist")
+  const artistId = artist.id;
+  const grpcRequest = { artistId:artistId,page:page,limit:limit };
+  const grpcResponse = await new Promise((resolve, reject) => {
+    nftClient.GetArtistTickets(grpcRequest, (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+  return grpcResponse;
+}
+
 
 
 export {
@@ -304,5 +316,5 @@ export {
   getTickets,
   getMyTickets,
   listResellTicket,
-  getResellTickets, buyResellTicket, updateTicketStatusClient, updateResellTicketClient
+  getResellTickets, buyResellTicket, updateTicketStatusClient, updateResellTicketClient,getArtistTicket
 };

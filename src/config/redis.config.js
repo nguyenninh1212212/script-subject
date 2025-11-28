@@ -1,12 +1,12 @@
 import { createClient } from "redis";
 
 const redisClient = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379",
+  url: process.env.REDIS_URL,
 });
 redisClient.on("message", (mes) => console.log("Redis log : " + mes));
 await redisClient.connect();
 const redisSub = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379",
+  url: process.env.REDIS_URL,
 });
 redisClient.on("message", (mes) => console.log("Redis log : " + mes));
 await redisSub.connect();

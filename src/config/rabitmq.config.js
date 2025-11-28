@@ -1,6 +1,8 @@
 import amqp from "amqplib";
+import dotenv from "dotenv";
+dotenv.config();
 
-const RABBIT_URL = "amqp://guest:guest@localhost:5672"; // hoặc URL RabbitMQ cloud
+const RABBIT_URL = process.env.RABBIT_URL; // hoặc URL RabbitMQ cloud
 let channel;
 
 const initRabbit = async () => {
