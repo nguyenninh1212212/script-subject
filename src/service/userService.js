@@ -53,7 +53,7 @@ const register = async ({ username, password, name }) => {
 
   const [user, created] = await User.findOrCreate({
     where: { [Op.or]: [{ username }, { email }] },
-    defaults: { username, email, password: hashPassword, name },
+    defaults: { username, password: hashPassword, name },
   });
 
   if (!created) throw alreadyExist("Username or Email");
