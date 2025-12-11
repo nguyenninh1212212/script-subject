@@ -51,9 +51,8 @@ router.post(
   "/register",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
-
-    const { username, password, name, email } = req.body;
-    await userService.register({ username, password, name, email });
+    const { username, password, name } = req.body;
+    await userService.register({ username, password, name });
     message(res, "Register success", 201);
   })
 );

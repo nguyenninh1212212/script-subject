@@ -278,6 +278,7 @@ const getSong = async ({ userId, id }) => {
           songJson.artist.avatarUrl
             ? getUrlCloudinary(songJson.artist.avatarUrl)
             : null,
+          recordListen(userId, songJson.id),
         ]);
 
       // Replace urls in songJson
@@ -512,6 +513,7 @@ const getTopSongs = async (limit = 20) => {
   });
   return res.map((r) => ({ key: r.value, score: r.score }));
 };
+
 const recordListen = async (userId, songId) => {
   if (!userId) return;
   await redis.redisClient.zIncrBy(`user:${userId}:listens`, 1, songId);
@@ -612,4 +614,8 @@ export default {
   recommendByAudio,
   getSongManager,
   banSong,
+  addSongToHistory,
+  recommendForUser,
+  recommendByAudio,
+  getTopSongs,
 };

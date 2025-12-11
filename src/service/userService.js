@@ -47,12 +47,8 @@ const userObject = ({
 });
 
 // ==================== REGISTER ====================
-const register = async ({ username, password, name, email }) => {
+const register = async ({ username, password, name }) => {
   if (!username || !password || !name) badRequest("Invalid input");
-  const invalidEmail = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  if (invalidEmail) {
-    throw createError(400, "Invalid email format");
-  }
   const hashPassword = await bcrypt.hash(password, 10);
 
   const [user, created] = await User.findOrCreate({
