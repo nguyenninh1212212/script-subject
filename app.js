@@ -64,10 +64,20 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/", indexRouter);
-socketServer();
-redisConfig.redisClient;
-redisConfig.redisSub;
-initRabbit();
+(async () => {
+  // Chỉ khởi tạo một lần khi cold start
+  socketServer();
+  redisConfig.redisClient;
+  redisConfig.redisSub;
+  initRabbit();
+  try {
+    await initDB();
+    console.log("Database initialized successfully.");
+  } catch (error) {
+    console.error("Failed to initialize database:", error);
+    // Tùy chọn: Log lỗi và tiếp tục, hoặc crash (dùng process.exit(1))
+  }
+})();
 await initDB();
 
 app.use(errorHandler);
