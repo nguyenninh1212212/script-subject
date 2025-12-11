@@ -3,6 +3,7 @@ import { notFound, badRequest } from "../middleware/errorHandler.js";
 import sequelize from "../config/db.config.js";
 import { getPagination, getPagingData } from "../util/pagination.js";
 import { toMidnight } from "../util/help.js";
+import subscriptionStatus from "../enum/subscriptionStatus.js";
 
 const createSubscription = async ({ userId, planId, transactionId }) => {
   const t = await sequelize.transaction();
@@ -108,11 +109,47 @@ const renewSubscription = async ({ userId, id }) => {
   subscription.expiresAt = expiresAtObj;
   await subscription.save();
 };
+const getTotalSubscriptionsByType = async () => {
+  const ALIAS_PLAN = "plan";
 
+  try {
+    const result = await Subscription.findAll({
+      attributes: [
+        // 1. THAY THẾ "type" BẰNG "name"
+        [sequelize.literal(`"${ALIAS_PLAN}"."name"`), "name"], // Lấy tên gói (name)
+
+        [sequelize.fn("COUNT", sequelize.col("Subscription.id")), "count"],
+      ],
+      include: [
+        {
+          model: SubscriptionPlan,
+          as: ALIAS_PLAN, // Dùng alias 'plan'
+          attributes: [],
+          required: true,
+        },
+      ],
+      where: {
+        status: subscriptionStatus.ACTIVE,
+      }, // 2. THAY THẾ "type" BẰNG "name" trong GROUP BY
+      group: [sequelize.literal(`"${ALIAS_PLAN}"."name"`)],
+      raw: true,
+    }); // Định dạng lại kết quả
+
+    return result.map((item) => ({
+      // 3. Cập nhật key trả về từ 'type' thành 'name'
+      name: item.name,
+      count: parseInt(item.count, 10),
+    }));
+  } catch (error) {
+    console.error("Error fetching total subscriptions by name:", error);
+    return [];
+  }
+};
 export default {
   createSubscription,
   checkActiveSubscription,
   checkSubscription,
   getSubscriptions,
   renewSubscription,
+  getTotalSubscriptionsByType,
 };

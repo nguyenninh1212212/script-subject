@@ -22,10 +22,28 @@ router.post(
       secure: process.env.IS_DEV == "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    const { artistId, name, subscription, token, email, avatar } = ress;
+    const { artistId, name, subscription, token, email, avatar, roles } = ress;
     success(res, {
-      user: { artistId, name, subscription, token, email, avatar },
+      user: { artistId, name, subscription, token, email, avatar, roles },
     });
+  })
+);
+
+router.post(
+  "/create-account",
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['User']
+    const { username, password, name, email, roleName } = req.body;
+    const data = await userService.createAccount({
+      username,
+      password,
+      name,
+      email,
+      roleName,
+    });
+    success(res, data, 201);
   })
 );
 
@@ -112,9 +130,9 @@ router.post(
       secure: process.env.IS_DEV === "N",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    const { artistId, name, subscription, token, email, avatar } = ress;
+    const { artistId, name, subscription, token, email, avatar, roles } = ress;
     success(res, {
-      user: { artistId, name, subscription, token, email, avatar },
+      user: { artistId, name, subscription, token, email, avatar, roles },
     });
   })
 );

@@ -13,13 +13,13 @@ export const authenticateToken =
       const token = header?.split(" ")[1];
 
       if (!token) {
-        if (require) return res.status(401).json({ message: "Unauthorized" });
+        if (require) throw unauthorized();
         return next();
       }
 
       jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
-          if (require) return res.status(401).json({ message: "Unauthorized" });
+          if (require) throw unauthorized();
           return next();
         }
         req.user = AESDecrypt(user.data);

@@ -13,12 +13,12 @@ export default (sequelize, DataTypes) => {
       username: { type: DataTypes.STRING, allowNull: true, unique: true },
       name: { type: DataTypes.STRING, allowNull: true, unique: true },
       email: { type: DataTypes.STRING, allowNull: true, unique: true },
-      walletAddress: { type: DataTypes.STRING, allowNull: true, unique: true },
       password: { type: DataTypes.STRING, allowNull: true },
       refreshToken: { type: DataTypes.TEXT, allowNull: true },
       googleId: { type: DataTypes.STRING, unique: true, allowNull: true },
       facebookId: { type: DataTypes.STRING, unique: true, allowNull: true },
       avatar: { type: DataTypes.STRING, unique: false, allowNull: true },
+      isBan: { type: DataTypes.BOOLEAN, default: false },
     },
     {
       tableName: "users",

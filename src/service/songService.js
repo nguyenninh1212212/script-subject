@@ -31,6 +31,7 @@ import {
 import adudioClient from "../grpc/audioSearch.js";
 import redis from "../config/redis.config.js";
 import { sendMessage } from "../config/rabitmq.config.js";
+import song from "../model/entity/song.js";
 
 const createSong = async ({ title, userId, songFile, coverFile }) => {
   const artist = await Artist.findOne({
@@ -111,19 +112,20 @@ const createSong = async ({ title, userId, songFile, coverFile }) => {
 
 const {
   keys,
-  getCache,
-  setCache,
   getOrSetCache,
   publishInvalidationResource,
   updateCacheResource,
+  delByPattern,
+  redisClient,
 } = redis;
 const SEARCH_CACHE_TTL = 300;
+const GUEST = "GUEST";
 
 // =================================================================
 // === ĐÃ CẬP NHẬT HÀM NÀY (getSongs) ===
 // =================================================================
 const getSongs = async ({ page, size }, userId) => {
-  const key = keys.songList(page, size, userId);
+  const key = keys.songList(page, size, GUEST);
   return getOrSetCache(key, async () => {
     const { limit, offset } = getPagination(page, size);
     const data = await Song.findAndCountAll({
@@ -193,10 +195,17 @@ const incrementViews = async (artistId, songId) => {
 };
 
 const addSongToHistory = async (userId, songId) => {
-  const timestamp = Date.now();
-  const key = keys.history(userId);
+  if (!userId || !songId) {
+    console.log("Guest user → skip history");
+    return;
+  }
 
-  await redis.redisClient.zAdd(key, timestamp, songId);
+  await redis.redisClient.zAdd(keys.history(userId), [
+    {
+      score: Date.now(),
+      value: String(songId),
+    },
+  ]);
 };
 
 const getSong = async ({ userId, id }) => {
@@ -225,7 +234,7 @@ const getSong = async ({ userId, id }) => {
           [
             sequelize.literal(`EXISTS (
           SELECT 1 FROM "FavoriteSong" fs
-          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = ${userIdValue}
+          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = ${userId}
         )`),
             "isFavourite",
           ],
@@ -298,32 +307,41 @@ const removeSong = async ({ userId, songId }) => {
   if (!song) notFound("Song not found");
   if (song.artist.userId !== userId)
     badRequest("You are not the owner of this song");
-  await publishInvalidationResource({
-    resource: "song",
-    idOrQuery: songId,
-    type: "song:delete",
-  });
-
+  delByPattern(`songs:list:*`);
+  redisClient.del(keys.songMeta(songId));
+  redisClient.del(keys.artist(song.artistId));
   await song.destroy();
 };
 
 const deleteSong = async (songId) => {
-  const song = Song.findByPk(songId);
+  const song = await Song.findByPk(songId);
+  if (!song) {
+    throw new Error("Song not found");
+  }
+
   await Promise.all([
-    await deleteFromCloudinary(song.coverImage),
-    await deleteFromCloudinary(song.song),
+    deleteFromCloudinary(song.coverImage),
+    deleteFromCloudinary(song.song),
   ]);
-  await Promise.all[
-    (sendMessage("song_es_del", { id: songId, index: "songs" }),
+
+  await Promise.all([
+    sendMessage("song_es_del", { id: songId, index: "songs" }),
     publishInvalidationResource({
       resource: "song",
       idOrQuery: songId,
       type: "song:delete",
-    }))
-  ];
+    }),
+  ]);
+
   await Song.destroy({
     where: { id: songId },
+    force: true,
   });
+
+  await delByPattern(`songs:list:*`);
+
+  await redisClient.del(keys.songMeta(songId));
+  await redisClient.del(keys.artist(song.artistId));
 };
 
 const restoreSong = async ({ userId, id }) => {
@@ -353,11 +371,9 @@ const restoreSong = async ({ userId, id }) => {
     notFound("Song");
   }
 
-  await updateCacheResource({
-    resource: "song",
-    idOrQuery: id,
-    newData: updatedRows[1][0],
-  });
+  delByPattern(`songs:list:*`);
+  redisClient.del(keys.songMeta(id));
+  redisClient.del(keys.artist(artist.id));
 };
 
 const updateSong = async ({ id, userId, data, coverFile }) => {
@@ -477,8 +493,6 @@ const getTrashSongs = async ({ userId }) => {
     paranoid: false,
   });
 
-  console.log("🚀 ~ getTrashSongs ~ songP:", songP);
-
   if (!songP || songP.length === 0) return [];
 
   const songJson = songP.map((song) => song.toJSON());
@@ -564,6 +578,20 @@ export const recommendForUser = async (userId, topN = 10) => {
   return recommendations;
 };
 
+export const getSongManager = async () => {
+  const songs = await Song.findAll({
+    attributes: ["id", "title", "createdAt", "isVipOnly", "deletedAt"],
+    paranoid: false,
+  });
+  return songs;
+};
+
+export const banSong = async ({ songId, isBan }) => {
+  const song = await Song.findByPk(songId);
+  if (!song) throw notFound();
+  await song.update({ isBan });
+};
+
 export default {
   createSong,
   getSongs,
@@ -582,4 +610,6 @@ export default {
   getUserHistory,
   recommendForUser,
   recommendByAudio,
+  getSongManager,
+  banSong,
 };

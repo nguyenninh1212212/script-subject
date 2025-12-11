@@ -37,18 +37,18 @@ router.post(
 );
 
 router.patch(
-  "/",
+  "/:id",
   authenticateToken(true),
   authorizeRoles("admin"),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Subscription plan']
-    const { type } = req.query;
     const { name, price, duration } = req.body;
-    const sub = await PlanService.createPlan({
+    const { id } = req.params;
+    const sub = await PlanService.updatePlan({
       name,
       price,
       duration,
-      type,
+      id,
     });
     success(res, sub, 200);
   })

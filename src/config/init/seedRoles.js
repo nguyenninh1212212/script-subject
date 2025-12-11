@@ -9,6 +9,7 @@ async function seedRoles() {
       { name: "admin" },
       { name: "user" },
       { name: "guest" },
+      { name: "staff" },
     ];
 
     for (const role of defaultRoles) {

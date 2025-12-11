@@ -2,12 +2,14 @@ import {
   Payment,
   Subscription,
   SubscriptionPlan,
+  User,
 } from "../model/entity/index.js";
 import client from "../config/payment_wallet/paypal.config.js";
 import paypal from "@paypal/checkout-server-sdk";
 import { convertCurrency } from "../util/foreignCurrency.js";
 import currentMap from "../../currentCode.json" with  { type: "json" };
 import { alreadyExist, notFound } from "../middleware/errorHandler.js";
+import {sequelize} from "../model/entity/index.js";
 import moment from "moment";
 import { Op } from "sequelize";
 const PAYPAL_SUCCESS_URL = process.env.PAYPAL_SUCCESS_URL;
@@ -152,7 +154,62 @@ const getPaymentOrder = async (orderId) => {
     },
   };
 };
+const paymentGrowth = async () => { // <<< CẦN THÊM THAM SỐ
+    const monthlyGrowthTemplate = [
+        { month: 'Jan', revenue: 0 },
+        { month: 'Feb', revenue: 0 },
+        { month: 'Mar', revenue: 0 },
+        { month: 'Apr', revenue: 0 },
+        { month: 'May', revenue: 0 },
+        { month: 'Jun', revenue: 0 },
+        { month: 'Jul', revenue: 0 },
+        { month: 'Aug', revenue: 0 },
+        { month: 'Sep', revenue: 0 },
+        { month: 'Oct', revenue: 0 },
+        { month: 'Nov', revenue: 0 },
+        { month: 'Dec', revenue: 0 },
+    ];
 
+    try {
+        const currentYear = new Date().getFullYear();
+        
+        // Cú pháp PostgreSQL: EXTRACT(MONTH FROM "createdAt")
+        const monthExtractor = sequelize.literal(`EXTRACT(MONTH FROM "createdAt")`);
+        
+        const result = await Payment.findAll({
+            attributes: [
+                [monthExtractor, 'monthNum'], 
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalRevenue'],
+            ],
+            where: {
+                createdAt: {
+                    [Op.gte]: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+                    [Op.lt]: new Date(`${currentYear + 1}-01-01T00:00:00.000Z`),
+                },
+            },
+            group: [monthExtractor],
+            order: [[sequelize.literal('"monthNum"'), 'ASC']],
+            raw: true,
+        });
+
+        const finalGrowthData = [...monthlyGrowthTemplate]; 
+
+        result.forEach(item => {
+            const monthIndex = parseInt(item.monthNum, 10) - 1; 
+
+            if (monthIndex >= 0 && monthIndex < 12) {
+                // Đảm bảo chuyển đổi sang float vì 'amount' là DECIMAL(10, 2)
+                finalGrowthData[monthIndex].revenue = parseFloat(item.totalRevenue); 
+            }
+        });
+
+        return finalGrowthData;
+
+    } catch (error) {
+        console.error("Error fetching payment growth:", error);
+        return monthlyGrowthTemplate;
+    }
+};
 const totalPayment = async () => {
   const start = moment().startOf("month").toDate();
   const end = moment().endOf("month").toDate();
@@ -167,7 +224,21 @@ const totalPayment = async () => {
   });
   const total = payments.reduce((acc, p) => acc + Number(p.amount), 0);
 
-  return total;
+  return {
+    total: total,
+    growth: await paymentGrowth(Payment, Payment.sequelize),
+  };
 };
 
-export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal, getPaymentOrder ,totalPayment};
+const getAllPayments = async () => {
+  return await Payment.findAll({
+    attributes:["id","amount","method","status","transactionId","paymentType","createdAt","currencyCode","orderId"],
+    include:[
+      {
+        model:User,
+        as:"user",
+        attributes:["id","name","email"]}]
+  });
+}
+
+export default { createPayment, createOrderPaypal,getPaymentHistory,createSubscriptionOrderPaypal,createRenewSubOrderPaypal, getPaymentOrder ,totalPayment,getAllPayments};

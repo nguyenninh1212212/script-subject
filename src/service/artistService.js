@@ -5,6 +5,7 @@ import {
   SubscriptionPlan,
   Song,
   MouthlySongView,
+  User,
 } from "../model/entity/index.js";
 import subscriptionType from "../enum/subscriptionType.js";
 import {
@@ -24,7 +25,7 @@ import { addDataElastic } from "./searchService.js";
 import redis from "../config/redis.config.js";
 import { normalizeTextForAutocomplete } from "../util/help.js";
 
-const { getOrSetCache, keys, updateCacheResource } = redis;
+const { getOrSetCache, keys, updateCacheResource, delByPattern } = redis;
 
 const createArtist = async ({
   userId,
@@ -358,8 +359,117 @@ const updateArtist = async ({
   });
 };
 
+const artistGrowth = async () => {
+  // 1. Template kết quả mặc định
+  const monthlyGrowthTemplate = [
+    { month: "Jan", artists: 0 },
+    { month: "Feb", artists: 0 },
+    { month: "Mar", artists: 0 },
+    { month: "Apr", artists: 0 },
+    { month: "May", artists: 0 },
+    { month: "Jun", artists: 0 },
+    { month: "Jul", artists: 0 },
+    { month: "Aug", artists: 0 },
+    { month: "Sep", artists: 0 },
+    { month: "Oct", artists: 0 },
+    { month: "Nov", artists: 0 },
+    { month: "Dec", artists: 0 },
+  ];
+
+  try {
+    const currentYear = new Date().getFullYear();
+
+    const monthExtractor = sequelize.literal(
+      `EXTRACT(MONTH FROM "Artist"."createdAt")`
+    );
+
+    const result = await Artist.findAll({
+      attributes: [
+        [monthExtractor, "monthNum"],
+        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+      ],
+      where: {
+        createdAt: {
+          [sequelize.Op.gte]: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+          [sequelize.Op.lt]: new Date(`${currentYear + 1}-01-01T00:00:00.000Z`),
+        },
+      },
+      group: [monthExtractor],
+      order: [[sequelize.literal('"monthNum"'), "ASC"]],
+      raw: true,
+    });
+
+    const finalGrowthData = [...monthlyGrowthTemplate];
+
+    result.forEach((item) => {
+      // Chuyển đổi số tháng (PostgreSQL thường trả về number, nhưng raw:true có thể là string)
+      const monthIndex = parseInt(item.monthNum, 10) - 1;
+
+      if (monthIndex >= 0 && monthIndex < 12) {
+        finalGrowthData[monthIndex].artists = parseInt(item.count, 10);
+      }
+    });
+
+    return finalGrowthData;
+  } catch (error) {
+    console.error("Error fetching artist growth:", error);
+    // Trả về dữ liệu trống nếu có lỗi
+    return monthlyGrowthTemplate;
+  }
+};
+
 const totalArtist = async () => {
-  return await Artist.count();
+  return {
+    total: await Artist.count(),
+    growth: await artistGrowth(),
+  };
+};
+const getArtistManager = async () => {
+  const artists = await Artist.findAll({
+    attributes: [
+      "id",
+      "stageName",
+      "createdAt",
+      "verified",
+      "avatarUrl",
+      "isBan",
+    ],
+    include: [
+      {
+        model: User,
+        as: "owner",
+        attributes: ["id", "name", "email"],
+      },
+      {
+        model: Song,
+        as: "songs",
+        attributes: ["id", "title", "coverImage", "createdAt"],
+        order: [["createdAt", "DESC"]],
+        limit: 3,
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+
+  const dataJSON = await artists.map((artist) => artist.toJSON());
+  const data = await Promise.all(
+    dataJSON.map(async (artist) => {
+      artist.songs = await transformPropertyInList(
+        artist.songs,
+        ["coverImage"],
+        getUrlCloudinary
+      );
+      return artist;
+    })
+  );
+
+  return transformPropertyInList(data, ["avatarUrl"], getUrlCloudinary);
+};
+
+const banArtist = async ({ artistId, isBan }) => {
+  const artist = await Artist.findByPk(artistId);
+  if (!artist) throw notFound();
+  await artist.update({ isBan });
 };
 
 export default {
@@ -369,4 +479,6 @@ export default {
   getArtist,
   myArtist,
   totalArtist,
+  getArtistManager,
+  banArtist,
 };
