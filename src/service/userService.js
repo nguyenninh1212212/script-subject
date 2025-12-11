@@ -52,7 +52,7 @@ const register = async ({ username, password, name }) => {
   const hashPassword = await bcrypt.hash(password, 10);
 
   const [user, created] = await User.findOrCreate({
-    where: { [sequelize.Op.or]: [{ username }, { email }] },
+    where: { [Op.or]: [{ username }, { email }] },
     defaults: { username, email, password: hashPassword, name },
   });
 
