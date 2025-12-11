@@ -10,6 +10,12 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: "postgres",
+    dialectOptions: {
+      ssl: {
+        require: true, // Bắt buộc sử dụng SSL
+        rejectUnauthorized: false, // (Tùy chọn) Thường được dùng để tránh lỗi self-signed certs trong môi trường test/staging. Tốt nhất là nên để true nếu có thể.
+      },
+    },
     logging: false,
   }
 );

@@ -12,12 +12,12 @@ import artistService from "../service/artistService.js";
 import songService from "../service/songService.js";
 import paymentService from "../service/paymentService.js";
 import subscription from "../service/subscriptionService.js";
-
+import roleService from "../service/roleService.js";
 const router = express.Router();
 router.get(
   "/",
   authenticateToken(true),
-  authenticateToken("admin"),
+  authorizeRoles("admin"),
   asyncHandler(async (req, res) => {
     const [totalUsers, totalArtist, totalSongs, monthRevenue, subscriptions] =
       await Promise.all([
@@ -40,9 +40,41 @@ router.get(
   })
 );
 router.post(
+  "/role/create",
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const { name } = req.body;
+    await roleService.createRole({ name });
+    success(res, data);
+  })
+);
+router.post(
+  "/role/update/:id",
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const { name } = req.body;
+    const { id } = req.params;
+    await roleService.updateRole({ name, roleId: id });
+    success(res, data);
+  })
+);
+router.post(
+  "/role/delete/:id",
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await roleService.deleteRole({ roleId: id });
+    success(res, data);
+  })
+);
+
+router.post(
   "/ban-user/:id",
   authenticateToken(true),
-  authenticateToken("admin"),
+  authorizeRoles("admin"),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     console.log("🚀 ~ id:", id);
@@ -55,7 +87,7 @@ router.post(
 router.post(
   "/ban-artist/:id",
   authenticateToken(true),
-  authenticateToken("admin", "staff"),
+  authorizeRoles("admin", "staff"),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { isBan } = req.body;
@@ -66,7 +98,7 @@ router.post(
 router.post(
   "/ban-song/:id",
   authenticateToken(true),
-  authenticateToken("admin", "staff"),
+  authorizeRoles("admin", "staff"),
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { isBan } = req.body;

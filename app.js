@@ -78,7 +78,6 @@ app.use("/", indexRouter);
     // Tùy chọn: Log lỗi và tiếp tục, hoặc crash (dùng process.exit(1))
   }
 })();
-await initDB();
 
 app.use(errorHandler);
 
