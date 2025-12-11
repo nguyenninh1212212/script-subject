@@ -155,6 +155,16 @@ router.get(
   })
 );
 router.get(
+  "/manager",
+  authenticateToken(true),
+  authorizeRoles("admin", "staff"),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const data = await songService.getSongManager();
+    success(res, data);
+  })
+);
+router.get(
   "/artist/:artistId",
   authenticateToken(false),
   asyncHandler(async (req, res) => {

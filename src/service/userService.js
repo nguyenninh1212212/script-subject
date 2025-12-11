@@ -12,7 +12,7 @@ import createError from "http-errors";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import { AESDecrypt } from "../util/AES.js";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import {
   alreadyExist,
   badRequest,
@@ -33,6 +33,7 @@ const userObject = ({
   subscription,
   refreshToken,
   avatar,
+  roles,
   email,
 }) => ({
   token,
@@ -42,6 +43,7 @@ const userObject = ({
   artistId: artistId || null,
   subscription: subscription || [],
   email: email || null,
+  roles,
 });
 
 // ==================== REGISTER ====================
@@ -86,6 +88,7 @@ const login = async ({ username, password }) => {
   });
 
   if (!user) throw unauthorized("Invalid credentials");
+  if (user.isBan) throw badRequest("This account is ban");
   if (!user.password)
     throw unauthorized("This account only supports Google login");
 
@@ -113,6 +116,7 @@ const login = async ({ username, password }) => {
     refreshToken,
     avatar: user?.avatar,
     email: user?.email,
+    roles: roleNames,
     subscription: user?.subscriptions.map((e) => {
       return {
         name: e?.plan?.name,
@@ -131,7 +135,29 @@ const changeName = async ({ name, userId }) => {
 
 // ==================== GET USERS ====================
 const getUsers = async () => {
-  return User.findAll({ include: ["roles", "subscription"] });
+  return User.findAll({
+    include: [
+      {
+        model: Role,
+        as: "roles",
+        attributes: { exclude: ["id", "createdAt", "updatedAt"] }, // bỏ field trong Role
+        through: { attributes: [] }, // bỏ UserRole
+      },
+      {
+        model: Subscription,
+        as: "subscriptions",
+        attributes: ["status", "expiresAt"],
+        include: [
+          {
+            model: SubscriptionPlan,
+            as: "plan",
+            attributes: ["name"],
+          },
+        ],
+      },
+    ],
+    attributes: { exclude: ["password", "refreshToken"] },
+  });
 };
 
 // ==================== CHANGE PASSWORD ====================
@@ -221,7 +247,7 @@ const googleLogin = async ({ credential }) => {
       refreshToken,
       email: user?.email,
       avatar: user?.avatar,
-
+      roles: roleNames,
       subscription: subscription
         ? subscription.map((e) => {
             return {
@@ -310,16 +336,10 @@ const unLinkGoogle = async ({ refreshToken }) => {
   user.email = null;
   await user.update();
 };
-
-const totalUser = async () => {
-  return await User.count();
-};
-
 const userGrowth = async () => {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-  // Lấy số lượng user theo tháng
   const result = await User.findAll({
     attributes: [
       [fn("DATE_TRUNC", "month", col("createdAt")), "month"],
@@ -364,6 +384,54 @@ const userGrowth = async () => {
 
   return data;
 };
+const totalUser = async () => {
+  return {
+    total: await User.count(),
+    growth: await userGrowth(),
+  };
+};
+
+const createAccount = async ({ username, password, name, email, roleName }) => {
+  const role = await Role.findOne({ where: { name: roleName.toLowerCase() } });
+  if (!role) throw new Error("Role not found");
+
+  const hashPassword = await bcrypt.hash(password, 10);
+
+  const [user, created] = await User.findOrCreate({
+    where: {
+      [Op.or]: [{ username }, { email }],
+    },
+    defaults: {
+      username,
+      email,
+      password: hashPassword,
+      name,
+    },
+  });
+
+  if (!created) {
+    const roles = await user.getRoles();
+
+    const hasRole = roles.some((r) => r.name === role.name);
+
+    if (!hasRole) {
+      await user.addRole(role);
+    }
+
+    return user;
+  }
+
+  await user.addRole(role);
+  return user;
+};
+
+const banAccount = async ({ userId, isBan }) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw notFound();
+
+  await user.update({ isBan });
+};
+
 // ==================== EXPORT ====================
 export default {
   register,
@@ -378,4 +446,6 @@ export default {
   unLinkGoogle,
   totalUser,
   userGrowth,
+  createAccount,
+  banAccount,
 };

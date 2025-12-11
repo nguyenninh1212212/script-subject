@@ -2,7 +2,10 @@
 import express from "express";
 
 import asyncHandler from "../middleware/asyncHandler.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/authMiddleware.js";
 import { success } from "../model/dto/response.js";
 import paymentService from "../service/paymentService.js";
 import geoip from "geoip-lite";
@@ -37,6 +40,16 @@ router.get(
     // #swagger.tags = ['Payment']
     const userId = req.user.sub;
     const subs = await paymentService.getPaymentHistory({ userId });
+    success(res, subs);
+  })
+);
+router.get(
+  "/all",
+  authenticateToken(true),
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Payment']
+    const subs = await paymentService.getAllPayments();
     success(res, subs);
   })
 );

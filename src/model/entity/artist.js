@@ -41,6 +41,7 @@ export default (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
       },
+      isBan: { type: DataTypes.BOOLEAN, default: false },
     },
     {
       tableName: "artists",

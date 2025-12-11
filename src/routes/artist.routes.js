@@ -2,7 +2,10 @@ import express from "express";
 
 import artistService from "../service/artistService.js";
 import followService from "../service/followService.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/authMiddleware.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import { message, success } from "../model/dto/response.js";
 import upload from "../middleware/multer.js";
@@ -47,6 +50,15 @@ router.get(
     // #swagger.tags = ['Artist']
     const { page, size } = req.query;
     success(res, await artistService.getArtists({ page, size }));
+  })
+);
+router.get(
+  "/manager",
+  authenticateToken(true),
+  authorizeRoles("admin", "staff"),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Artist']
+    success(res, await artistService.getArtistManager());
   })
 );
 

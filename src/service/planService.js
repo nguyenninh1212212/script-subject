@@ -22,11 +22,11 @@ const TypePlan = async ({ planId }) => {
   return plan.type;
 };
 
-const updatePlan = async ({ id, name, price, duration, type }) => {
+const updatePlan = async ({ id, name, price, duration }) => {
   const plan = await SubscriptionPlan.findByPk(id);
   if (!plan) throw new Error(`Plan with id ${id} not found`);
 
-  const data = { name, price, duration, type };
+  const data = { name, price, duration };
 
   Object.keys(data).forEach((key) => data[key] == null && delete data[key]);
 
