@@ -194,26 +194,54 @@ const incrementViews = async (artistId, songId) => {
   }
 };
 
+const HISTORY_LIMIT = 100; // ví dụ: chỉ giữ 100 bài gần nhất
+const HISTORY_TTL_DAYS = 30;
+
 const addSongToHistory = async (userId, songId) => {
-  if (!userId || !songId) {
-    console.log("Guest user → skip history");
-    return;
-  }
-  await redis.redisClient.zAdd(keys.history(userId), [
-    {
-      score: Date.now(),
-      value: String(songId),
-    },
+  if (!userId || !songId) return;
+
+  const song = await Song.findByPk(songId);
+  if (!song) return;
+
+  const key = keys.history(userId);
+  const now = Date.now();
+
+  // Thêm bài hát vào ZSET
+  await redisClient.sendCommand([
+    "ZADD",
+    key,
+    now.toString(),
+    JSON.stringify({ id: songId, title: song.title }),
   ]);
+
+  // Xóa những bài hát cũ hơn 30 ngày
+  const minScore = now - HISTORY_TTL_DAYS * 24 * 60 * 60 * 1000; // 30 ngày trước
+  await redisClient.sendCommand([
+    "ZREMRANGEBYSCORE",
+    key,
+    0,
+    minScore.toString(),
+  ]);
+
+  const total = await redisClient.sendCommand(["ZCARD", key]);
+  if (total > HISTORY_LIMIT) {
+    await redisClient.sendCommand([
+      "ZREMRANGEBYRANK",
+      key,
+      0,
+      total - HISTORY_LIMIT - 1,
+    ]);
+  }
 };
 
 const getSong = async ({ userId, id }) => {
   const key = keys.songMeta(id);
-
+  if (userId && id) {
+    await Promise.all([addSongToHistory(userId, id), addTopSong(userId, id)]);
+  }
   return getOrSetCache(
     key,
     async () => {
-      if (userId && id) await addSongToHistory(userId, id);
       const song = await Song.findByPk(id, {
         include: [
           { model: Album, as: "album", attributes: ["id", "title"] },
@@ -422,12 +450,12 @@ const getFavourite = async ({ userId }, page, size) => {
   const { limit, offset } = getPagination(page, size);
 
   const allFavorites = await user.getFavoriteSongs({
-    through: { attributes: [] }, // 🧹 loại bỏ dữ liệu bảng trung gian
+    through: { attributes: [] },
   });
   const totalItems = allFavorites.length;
 
   const songs = await user.getFavoriteSongs({
-    joinTableAttributes: [], // 👈 Cách mới, chắc chắn loại bỏ FavoriteSong
+    joinTableAttributes: [],
     limit,
     offset,
     order: [["createdAt", "ASC"]],
@@ -507,24 +535,67 @@ const getTrashSongs = async ({ userId }) => {
   return songs;
 };
 
-const getTopSongs = async (limit = 20) => {
-  const res = redis.redisClient.zrangebyscore(keys.topSongs(), 0, limit - 1, {
-    REV: true,
-  });
-  return res.map((r) => ({ key: r.value, score: r.score }));
+// Thêm bài vào top
+const addTopSong = async (songId) => {
+  if (!songId) return;
+
+  try {
+    await redis.redisClient.sendCommand([
+      "ZINCRBY",
+      keys.topSongs(),
+      "1",
+      songId,
+    ]);
+  } catch (error) {
+    console.error("Error in addTopSong:", error);
+  }
 };
+
+const getTopSongs = async (limit = 20) => {
+  const res = await redis.redisClient.zRevRange(keys.topSongs(), 0, limit - 1, {
+    WITHSCORES: true,
+  });
+  const topSongs = [];
+  const key = keys.topSongList();
+
+  return getOrSetCache(key, async () => {
+    for (let i = 0; i < res.length; i += 2) {
+      const songId = res[i];
+      const score = Number(res[i + 1]);
+      const song = await Song.findByPk(songId, {
+        attributes: ["id", "title", "coverImage"],
+      });
+      const coverImage = song.coverImage
+        ? await getUrlCloudinary(song.coverImage)
+        : "";
+
+      topSongs.push({
+        id: songId,
+        title: song?.title || "Unknown",
+        coverImage: coverImage,
+        score,
+      });
+    }
+
+    return topSongs;
+  });
+};
+
 const recordListen = async (userId, songId) => {
   if (!userId) return;
-  await redis.redisClient.zIncrBy(`user:${userId}:listens`, 1, songId);
+  await redisClient.zIncrBy(`song:${userId}:listens`, 1, songId);
 };
 
 const getUserHistory = async (userId) => {
-  const history = await redis.redisClient.zrevrange(
+  const items = await redisClient.sendCommand([
+    "ZREVRANGE",
     `user:${userId}:listens`,
-    0,
-    -1,
-    "WITHSCORES"
-  );
+    "0",
+    "9",
+  ]);
+
+  // Nếu lưu JSON, parse lại
+  const history = items.map((item) => JSON.parse(item));
   return history;
 };
 

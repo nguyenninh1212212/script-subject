@@ -111,11 +111,30 @@ router.post(
   })
 );
 router.get(
+  "/history",
+  authenticateToken(true),
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const userId = req.user.sub;
+    const data = await songService.getUserHistory(userId);
+    success(res, data, 200);
+  })
+);
+router.get(
   "/recommend",
+  authenticateToken(true),
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['Song']
     const userId = req.user?.sub;
     const data = await songService.recommendForUser(userId, 10);
+    success(res, data);
+  })
+);
+router.get(
+  "/top",
+  asyncHandler(async (req, res) => {
+    // #swagger.tags = ['Song']
+    const data = await songService.getTopSongs();
     success(res, data);
   })
 );

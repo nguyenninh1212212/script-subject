@@ -26,6 +26,7 @@ const keys = {
   recomend: (id) => `song:recommend:${id}`,
   waveform: (id) => `song:wave:${id}`,
   topSongs: () => `top:songs`,
+  topSongList: () => `top:songList`,
   songList: (page, size, userId) =>
     `songs:list:${userId || "guest"}:page${page}:size${size}`,
   artist: (id) => `artist:meta:${id}`,
@@ -39,7 +40,8 @@ const keys = {
   favoriteList: (page, size, userId) =>
     `favorite:list:${userId || "guest"}:page${page}:size${size}`,
   home: () => `home`,
-  history: (userId) => `user:${userId || "guest"}:listens`,
+  history: (userId) => `user:${userId}:listens`,
+  userHistory: (userId) => `songs:${userId}:listens`,
 };
 
 const CACHE_INVALIDATION_CHANNEL = "cache:invalidate";
