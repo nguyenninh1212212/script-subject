@@ -114,7 +114,7 @@ router.get(
   "/history",
   authenticateToken(true),
   asyncHandler(async (req, res) => {
-    // #swagger.tags = ['songs']
+    // #swagger.tags = ['Song']
     const userId = req.user.sub;
     const data = await songService.getUserHistory(userId);
     success(res, data, 200);
