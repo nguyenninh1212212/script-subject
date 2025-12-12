@@ -39,9 +39,7 @@ const keys = {
   favoriteList: (page, size, userId) =>
     `favorite:list:${userId || "guest"}:page${page}:size${size}`,
   home: () => `home`,
-  history: (userId) => {
-    `user:${userId || "guest"}:listens`;
-  },
+  history: (userId) => `user:${userId || "guest"}:listens`,
 };
 
 const CACHE_INVALIDATION_CHANNEL = "cache:invalidate";

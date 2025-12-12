@@ -19,41 +19,6 @@ router.post(
   ]),
   authenticateToken(true),
   asyncHandler(async (req, res) => {
-    // #region Swagger
-    /* #swagger.tags = ['Song']
-    #swagger.summary = 'Upload a new song with its cover image.'
-    #swagger.description = 'Endpoint to upload a song file and a cover image, along with song metadata.'
-    
-    #swagger.consumes = ['multipart/form-data']
-
-    // --- Định nghĩa các trường FILE ---
-    #swagger.parameters['songFile'] = {
-        in: 'formData',
-        type: 'file',
-        required: 'true',
-        description: 'The audio file of the song.'
-    }
-    #swagger.parameters['coverFile'] = {
-        in: 'formData',
-        type: 'file',
-        required: 'true',
-        description: 'The cover image for the song.'
-    }
-
-    // --- BỔ SUNG: Định nghĩa các trường TEXT ---
-    #swagger.parameters['title'] = {
-        in: 'formData',
-        type: 'string',
-        required: 'true',
-        description: 'Title of the song.'
-    }
-    #swagger.parameters['albumId'] = {
-        in: 'formData',
-        type: 'integer',
-        description: 'ID of the album this song belongs to (optional).'
-    }
-*/
-    // #endregion
     const { title } = req.body;
 
     const files = req.files;
