@@ -163,7 +163,7 @@ const getUsers = async () => {
 // ==================== CHANGE PASSWORD ====================
 const changePassword = async (username, oldPassword, newPassword) => {
   const user = await User.findOne({
-    where: { [sequelize.Op.or]: [{ username }, { email: username }] },
+    where: { [Op.or]: [{ username }, { email: username }] },
   });
   if (!user) notFound("User not found");
 

@@ -57,8 +57,9 @@ router.post(
     message(res, "Register success", 201);
   })
 );
+
 router.put(
-  "/change-password",
+  "/change-name",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { name } = req.body;
