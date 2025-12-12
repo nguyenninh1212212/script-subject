@@ -199,7 +199,6 @@ const addSongToHistory = async (userId, songId) => {
     console.log("Guest user → skip history");
     return;
   }
-
   await redis.redisClient.zAdd(keys.history(userId), [
     {
       score: Date.now(),
@@ -214,7 +213,7 @@ const getSong = async ({ userId, id }) => {
   return getOrSetCache(
     key,
     async () => {
-      addSongToHistory(userId, id);
+      if (userId && id) await addSongToHistory(userId, id);
       const song = await Song.findByPk(id, {
         include: [
           { model: Album, as: "album", attributes: ["id", "title"] },
@@ -234,11 +233,12 @@ const getSong = async ({ userId, id }) => {
           [
             sequelize.literal(`EXISTS (
           SELECT 1 FROM "FavoriteSong" fs
-          WHERE fs."SongId" = "Song"."id" AND fs."UserId" = ${userId}
+         WHERE fs."SongId" = "Song"."id" AND fs."UserId" = :userId
         )`),
             "isFavourite",
           ],
         ],
+        replacements: { userId },
       });
 
       if (!song) return null;
@@ -407,6 +407,7 @@ const addToFavoutite = async ({ userId, songId }) => {
     await User.findByPk(userId),
     await Song.findByPk(songId),
   ]);
+  console.log("🚀 ~ addToFavoutite ~ user:", user);
   const exist = await user.hasFavoriteSong(song);
   if (exist) alreadyExist("Song");
   if (!user) badRequest("User not existing");
