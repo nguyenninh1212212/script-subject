@@ -263,8 +263,6 @@ const updateCacheResource = async ({
 };
 
 const delByPattern = async (pattern) => {
-  console.log("🚀 ~ delByPattern ~ pattern:", pattern);
-
   try {
     const iter = redisClient.scanIterator({
       MATCH: pattern,
@@ -272,7 +270,6 @@ const delByPattern = async (pattern) => {
     });
 
     for await (const key of iter) {
-      console.log("🚀 Deleting key:", key);
       await redisClient.del(key); // đúng cú pháp
     }
   } catch (err) {

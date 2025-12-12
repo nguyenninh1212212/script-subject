@@ -206,7 +206,6 @@ const addSongToHistory = async (userId, songId) => {
   const key = keys.history(userId);
   const now = Date.now();
 
-  // Thêm bài hát vào ZSET
   await redisClient.sendCommand([
     "ZADD",
     key,
@@ -214,12 +213,11 @@ const addSongToHistory = async (userId, songId) => {
     JSON.stringify({ id: songId, title: song.title }),
   ]);
 
-  // Xóa những bài hát cũ hơn 30 ngày
   const minScore = now - HISTORY_TTL_DAYS * 24 * 60 * 60 * 1000; // 30 ngày trước
   await redisClient.sendCommand([
     "ZREMRANGEBYSCORE",
     key,
-    0,
+    "0",
     minScore.toString(),
   ]);
 
@@ -228,8 +226,8 @@ const addSongToHistory = async (userId, songId) => {
     await redisClient.sendCommand([
       "ZREMRANGEBYRANK",
       key,
-      0,
-      total - HISTORY_LIMIT - 1,
+      "0",
+      (total - HISTORY_LIMIT - 1).toString(),
     ]);
   }
 };
@@ -335,14 +333,17 @@ const removeSong = async ({ userId, songId }) => {
   if (!song) notFound("Song not found");
   if (song.artist.userId !== userId)
     badRequest("You are not the owner of this song");
+  const artist = await Artist.findByPk(song.artistId);
   delByPattern(`songs:list:*`);
   redisClient.del(keys.songMeta(songId));
   redisClient.del(keys.artist(song.artistId));
+  redisClient.del(keys.myProfile(artist.userId));
   await song.destroy();
 };
 
 const deleteSong = async (songId) => {
-  const song = await Song.findByPk(songId);
+  const song = await Song.findByPk(songId, { paranoid: false });
+
   if (!song) {
     throw new Error("Song not found");
   }
@@ -350,9 +351,6 @@ const deleteSong = async (songId) => {
   await Promise.all([
     deleteFromCloudinary(song.coverImage),
     deleteFromCloudinary(song.song),
-  ]);
-
-  await Promise.all([
     sendMessage("song_es_del", { id: songId, index: "songs" }),
     publishInvalidationResource({
       resource: "song",
@@ -361,6 +359,7 @@ const deleteSong = async (songId) => {
     }),
   ]);
 
+  const artist = await Artist.findByPk(song.artistId);
   await Song.destroy({
     where: { id: songId },
     force: true,
@@ -368,14 +367,15 @@ const deleteSong = async (songId) => {
 
   await delByPattern(`songs:list:*`);
 
-  await redisClient.del(keys.songMeta(songId));
-  await redisClient.del(keys.artist(song.artistId));
+  redisClient.del(keys.songMeta(songId));
+  redisClient.del(keys.artist(song.artistId));
+  redisClient.del(keys.myProfile(artist.userId));
 };
 
 const restoreSong = async ({ userId, id }) => {
   const artist = await Artist.findOne({
     where: { userId },
-    attributes: ["id"],
+    attributes: ["id", "userId"],
   });
   if (!artist) {
     notFound("Artist");
@@ -398,10 +398,12 @@ const restoreSong = async ({ userId, id }) => {
   } else {
     notFound("Song");
   }
+  console.log("🚀 ~ restoreSong ~ artist.userId:", artist.userId);
 
   delByPattern(`songs:list:*`);
   redisClient.del(keys.songMeta(id));
   redisClient.del(keys.artist(artist.id));
+  redisClient.del(keys.myProfile(artist.userId));
 };
 
 const updateSong = async ({ id, userId, data, coverFile }) => {

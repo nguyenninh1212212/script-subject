@@ -31,9 +31,7 @@ const createAlbum = async ({ title, userId, coverFile }) => {
   const coverUrl = coverFile
     ? (await uploadFromBuffer(coverFile.buffer, "albumCovers")).public_id
     : null;
-  await publishInvalidationResource({
-    pattern: ["album:list:*"],
-  });
+
   return await Album.create({
     title,
     artistId: artist.id,
