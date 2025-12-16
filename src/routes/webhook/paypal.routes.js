@@ -37,7 +37,7 @@ router.get(
         }
 
         await Promise.all([
-          await paymentService.createPayment({
+          paymentService.createPayment({
             userId: userId,
             amount: result.amount.value,
             method: "paypal",
@@ -49,7 +49,7 @@ router.get(
             orderId: token,
           }),
 
-          await subscriptionService.createSubscription({
+          subscriptionService.createSubscription({
             userId,
             planId,
             transactionId: result.id,
