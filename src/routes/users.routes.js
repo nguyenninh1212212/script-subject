@@ -51,13 +51,18 @@ router.post(
   "/register",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
+<<<<<<< HEAD
+=======
+
+>>>>>>> feature/music
     const { username, password, name } = req.body;
     await userService.register({ username, password, name });
     message(res, "Register success", 201);
   })
 );
+
 router.put(
-  "/change-password",
+  "/change-name",
   asyncHandler(async (req, res) => {
     // #swagger.tags = ['User']
     const { name } = req.body;

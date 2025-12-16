@@ -49,10 +49,11 @@ const userObject = ({
 // ==================== REGISTER ====================
 const register = async ({ username, password, name }) => {
   if (!username || !password || !name) badRequest("Invalid input");
+
   const hashPassword = await bcrypt.hash(password, 10);
 
   const [user, created] = await User.findOrCreate({
-    where: { [Op.or]: [{ username }, { email }] },
+    where: { [Op.or]: [{ username: username }] },
     defaults: { username, password: hashPassword, name },
   });
 
@@ -159,7 +160,7 @@ const getUsers = async () => {
 // ==================== CHANGE PASSWORD ====================
 const changePassword = async (username, oldPassword, newPassword) => {
   const user = await User.findOne({
-    where: { [sequelize.Op.or]: [{ username }, { email: username }] },
+    where: { [Op.or]: [{ username }, { email: username }] },
   });
   if (!user) notFound("User not found");
 

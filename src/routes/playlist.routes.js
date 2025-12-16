@@ -68,7 +68,7 @@ router.delete(
     // #swagger.tags = ['Playlist']
     const { songId } = req.query;
     const { playlistId } = req.params;
-    await playlistService.deletePlaylist({ songId, playlistId });
+    await playlistService.removeSongFromPlaylist({ songId, playlistId });
     success(res, "Delete playlist success", 204);
   })
 );
